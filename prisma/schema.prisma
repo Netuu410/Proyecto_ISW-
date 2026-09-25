@@ -1,0 +1,42 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// 1. El Catálogo
+model CatalogoItem {
+  id           Int                 @id @default(autoincrement())
+  nombre       String
+  categoria    String
+  precioVenta  Float
+  costoInterno Float
+  detalles     DetalleCotizacion[]
+}
+
+// 2. La Cabecera de la Cotización
+model Cotizacion {
+  id           Int                 @id @default(autoincrement())
+  clienteId    Int
+  fecha        DateTime            @default(now())
+  estado       String              @default("Preliminar")
+  totalVenta   Float
+  gananciaNeta Float
+  items        DetalleCotizacion[]
+}
+
+// 3. El Detalle (Tabla intermedia)
+model DetalleCotizacion {
+  id             Int          @id @default(autoincrement())
+  cantidad       Int
+  precioCobrado  Float
+  costoAsumido   Float
+
+  cotizacion     Cotizacion   @relation(fields: [cotizacionId], references: [id])
+  cotizacionId   Int
+  item           CatalogoItem @relation(fields: [catalogoItemId], references: [id])
+  catalogoItemId Int
+}
