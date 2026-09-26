@@ -1,41 +1,32 @@
 import { useState, useEffect } from 'react';
 
 function App() {
-  const [producto, setProducto] = useState({
-    nombre: '',
-    categoria: '',
-    precioVenta: '',
-    costoInterno: ''
-  });
 
-  // 1. NUEVO ESTADO: Un arreglo para guardar la lista de productos que llegue del backend
+  const [producto, setProducto] = useState({ nombre: '', categoria: '', precioVenta: '', costoInterno: '' });
   const [catalogo, setCatalogo] = useState([]);
 
-  const handleChange = (e) => {
-    setProducto({ ...producto, [e.target.name]: e.target.value });
-  };
 
-  // 2. NUEVA FUNCIÓN: Pedirle al backend los productos (GET)
+  // Iniciamos clienteId en 1 por defecto y preparamos el espacio para seleccionar un producto
+  const [cotizacion, setCotizacion] = useState({ clienteId: '1', catalogoItemId: '', cantidad: '1' });
+  const [resultado, setResultado] = useState(null); // Aquí guardaremos la respuesta matemática del backend
+
+
   const cargarCatalogo = async () => {
     try {
       const respuesta = await fetch('http://localhost:3000/api/catalogo');
       if (respuesta.ok) {
         const datos = await respuesta.json();
-        setCatalogo(datos); // Guardamos la lista en la memoria de React para dibujarla
+        setCatalogo(datos);
       }
     } catch (error) {
       console.error('Error al cargar catálogo:', error);
     }
   };
 
-  // 3. NUEVO HOOK: useEffect hace que 'cargarCatalogo' se ejecute AUTOMÁTICAMENTE al abrir la página
-  useEffect(() => {
-    cargarCatalogo();
-  }, []); // Los corchetes vacíos significan "ejecutar solo 1 vez al inicio"
+  useEffect(() => { cargarCatalogo(); }, []);
 
   const guardarProducto = async (e) => {
     e.preventDefault();
-
     try {
       const datosParaBackend = {
         nombre: producto.nombre,
@@ -51,74 +42,138 @@ function App() {
       });
 
       if (respuesta.ok) {
-        alert('¡Producto guardado con éxito!');
+        alert('¡Producto guardado!');
         setProducto({ nombre: '', categoria: '', precioVenta: '', costoInterno: '' });
-        
-        // 4. MAGIA: Volvemos a cargar la tabla automáticamente después de guardar
         cargarCatalogo(); 
-      } else {
-        alert('Error al guardar. Revisa que no enviaste valores negativos.');
       }
     } catch (error) {
-      console.error('Error de red:', error);
-      alert('Error: ¿El backend está encendido?');
+      console.error('Error:', error);
+    }
+  };
+
+  
+  const generarCotizacion = async (e) => {
+    e.preventDefault();
+    try {
+      // Armamos la estructura exacta que pide tu esquema Zod en el backend
+      const datosParaBackend = {
+        clienteId: Number(cotizacion.clienteId),
+        items: [
+          {
+            catalogoItemId: Number(cotizacion.catalogoItemId),
+            cantidad: Number(cotizacion.cantidad)
+          }
+        ]
+      };
+
+      // Enviamos por POST a la ruta de cotizaciones
+      const respuesta = await fetch('http://localhost:3000/api/cotizaciones', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(datosParaBackend)
+      });
+
+      if (respuesta.ok) {
+        const datosGenerados = await respuesta.json();
+        setResultado(datosGenerados); // Guardamos la ganancia calculada para mostrarla en pantalla
+        alert('¡Cotización generada y guardada en PostgreSQL! 🚀');
+      } else {
+        alert('Error al generar cotización. Revisa que seleccionaste un producto.');
+      }
+    } catch (error) {
+      console.error('Error:', error);
     }
   };
 
   return (
-    <div style={{ padding: '40px', fontFamily: 'system-ui', maxWidth: '900px', margin: 'auto' }}>
-      <h2>🎪 NES Eventos - Admin</h2>
-      <hr />
+    <div style={{ padding: '40px', fontFamily: 'system-ui', maxWidth: '1000px', margin: 'auto' }}>
+      <h2>🎪 NES Eventos - Panel de Administración</h2>
       
-      {/* Contenedor flexible para poner formulario y tabla lado a lado */}
-      <div style={{ display: 'flex', gap: '40px', marginTop: '20px' }}>
-        
-        {/* LADO IZQUIERDO: EL FORMULARIO */}
-        <div style={{ flex: 1 }}>
-          <h4>Ingresar Nuevo Producto</h4>
-          <form onSubmit={guardarProducto} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-            <input name="nombre" value={producto.nombre} onChange={handleChange} placeholder="Ej: Silla Tiffany" required style={{ padding: '8px' }} />
-            <input name="categoria" value={producto.categoria} onChange={handleChange} placeholder="Ej: Mobiliario" required style={{ padding: '8px' }} />
-            <input name="precioVenta" type="number" value={producto.precioVenta} onChange={handleChange} placeholder="Precio de cobro" required style={{ padding: '8px' }} />
-            <input name="costoInterno" type="number" value={producto.costoInterno} onChange={handleChange} placeholder="Costo real empresa" required style={{ padding: '8px' }} />
-            
-            <button type="submit" style={{ padding: '10px', background: '#28a745', color: 'white', border: 'none', cursor: 'pointer', fontWeight: 'bold' }}>
-              Guardar en Catálogo
-            </button>
-          </form>
-        </div>
+      {/* SECCIÓN 1: CATÁLOGO */}
+      <div style={{ background: '#f8f9fa', padding: '20px', borderRadius: '8px', marginBottom: '30px' }}>
+        <h3>📦 Gestión de Catálogo</h3>
+        <div style={{ display: 'flex', gap: '40px' }}>
+          
+          <div style={{ flex: 1 }}>
+            <form onSubmit={guardarProducto} style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              <input name="nombre" value={producto.nombre} onChange={(e) => setProducto({ ...producto, nombre: e.target.value })} placeholder="Nombre" required style={{ padding: '8px' }} />
+              <input name="categoria" value={producto.categoria} onChange={(e) => setProducto({ ...producto, categoria: e.target.value })} placeholder="Categoría" required style={{ padding: '8px' }} />
+              <input name="precioVenta" type="number" value={producto.precioVenta} onChange={(e) => setProducto({ ...producto, precioVenta: e.target.value })} placeholder="Precio Venta" required style={{ padding: '8px' }} />
+              <input name="costoInterno" type="number" value={producto.costoInterno} onChange={(e) => setProducto({ ...producto, costoInterno: e.target.value })} placeholder="Costo Interno" required style={{ padding: '8px' }} />
+              <button type="submit" style={{ padding: '10px', background: '#007bff', color: 'white', border: 'none', cursor: 'pointer' }}>Agregar Producto</button>
+            </form>
+          </div>
 
-        {/* LADO DERECHO: LA TABLA DE INVENTARIO */}
-        <div style={{ flex: 2 }}>
-          <h4>Inventario Actual</h4>
-          <table style={{ width: '100%', borderCollapse: 'collapse', border: '1px solid #ddd' }}>
-            <thead style={{ background: '#f4f4f4' }}>
-              <tr>
-                <th style={{ padding: '10px', border: '1px solid #ddd' }}>ID</th>
-                <th style={{ padding: '10px', border: '1px solid #ddd' }}>Nombre</th>
-                <th style={{ padding: '10px', border: '1px solid #ddd' }}>Precio Venta</th>
-                <th style={{ padding: '10px', border: '1px solid #ddd' }}>Costo Interno</th>
-              </tr>
-            </thead>
-            <tbody>
-              {/* Iteramos sobre el arreglo de productos usando .map() */}
-              {catalogo.length === 0 ? (
-                <tr><td colSpan="4" style={{ padding: '10px', textAlign: 'center' }}>No hay productos registrados aún.</td></tr>
-              ) : (
-                catalogo.map((item) => (
+          <div style={{ flex: 2 }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', background: 'white' }}>
+              <thead style={{ background: '#e9ecef' }}>
+                <tr>
+                  <th style={{ padding: '8px', border: '1px solid #ddd' }}>ID</th>
+                  <th style={{ padding: '8px', border: '1px solid #ddd' }}>Nombre</th>
+                  <th style={{ padding: '8px', border: '1px solid #ddd' }}>Precio</th>
+                  <th style={{ padding: '8px', border: '1px solid #ddd' }}>Costo</th>
+                </tr>
+              </thead>
+              <tbody>
+                {catalogo.map((item) => (
                   <tr key={item.id}>
-                    <td style={{ padding: '10px', border: '1px solid #ddd', textAlign: 'center' }}>{item.id}</td>
-                    <td style={{ padding: '10px', border: '1px solid #ddd' }}>{item.nombre} <br/><small style={{color: 'gray'}}>{item.categoria}</small></td>
-                    <td style={{ padding: '10px', border: '1px solid #ddd', textAlign: 'center', color: '#28a745', fontWeight: 'bold' }}>${item.precioVenta}</td>
-                    <td style={{ padding: '10px', border: '1px solid #ddd', textAlign: 'center', color: '#dc3545' }}>${item.costoInterno}</td>
+                    <td style={{ padding: '8px', border: '1px solid #ddd', textAlign: 'center' }}>{item.id}</td>
+                    <td style={{ padding: '8px', border: '1px solid #ddd' }}>{item.nombre}</td>
+                    <td style={{ padding: '8px', border: '1px solid #ddd', textAlign: 'center' }}>${item.precioVenta}</td>
+                    <td style={{ padding: '8px', border: '1px solid #ddd', textAlign: 'center' }}>${item.costoInterno}</td>
                   </tr>
-                ))
-              )}
-            </tbody>
-          </table>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
-
       </div>
+
+      {/* SECCIÓN 2: COTIZADOR AUTOMÁTICO */}
+      <div style={{ background: '#e8f4f8', padding: '20px', borderRadius: '8px' }}>
+        <h3>💰 Simulador de Cotizaciones</h3>
+        <p>Selecciona un producto del catálogo para calcular la rentabilidad del evento.</p>
+        
+        <form onSubmit={generarCotizacion} style={{ display: 'flex', gap: '15px', alignItems: 'center', marginBottom: '20px' }}>
+          
+          <select 
+            required 
+            value={cotizacion.catalogoItemId} 
+            onChange={(e) => setCotizacion({ ...cotizacion, catalogoItemId: e.target.value })}
+            style={{ padding: '10px', flex: 2 }}
+          >
+            <option value="">-- Selecciona un Producto --</option>
+            {/* Dibujamos las opciones dinámicamente desde la base de datos */}
+            {catalogo.map(item => (
+              <option key={item.id} value={item.id}>{item.nombre} (Precio: ${item.precioVenta})</option>
+            ))}
+          </select>
+
+          <input 
+            type="number" 
+            min="1" 
+            value={cotizacion.cantidad} 
+            onChange={(e) => setCotizacion({ ...cotizacion, cantidad: e.target.value })}
+            placeholder="Cantidad" 
+            required 
+            style={{ padding: '10px', flex: 1 }}
+          />
+
+          <button type="submit" style={{ padding: '10px 20px', background: '#28a745', color: 'white', border: 'none', cursor: 'pointer', fontWeight: 'bold' }}>
+            Calcular Rentabilidad
+          </button>
+        </form>
+
+        {/* RESULTADO: Solo se muestra si el backend responde con éxito */}
+        {resultado && (
+          <div style={{ background: 'white', padding: '20px', borderLeft: '5px solid #28a745', borderRadius: '4px' }}>
+            <h4 style={{ margin: '0 0 10px 0' }}>Resultados del Evento (Cotización #{resultado.id})</h4>
+            <p style={{ margin: '5px 0', fontSize: '18px' }}>Total a cobrar al Cliente: <strong>${resultado.totalVenta}</strong></p>
+            <p style={{ margin: '5px 0', fontSize: '18px', color: '#28a745' }}>Ganancia Neta Empresa: <strong>${resultado.gananciaNeta}</strong></p>
+          </div>
+        )}
+      </div>
+
     </div>
   );
 }
