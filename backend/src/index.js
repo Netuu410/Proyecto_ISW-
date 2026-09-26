@@ -1,17 +1,20 @@
 import express from 'express';
+import cors from 'cors';
+import catalogoRoutes from './routes/catalogo.routes.js';
+import cotizacionRoutes from './routes/cotizacion.routes.js';
 
 const app = express();
 const PORT = 3000;
 
-//Permite que el Backend entienda datos en Formato JSON
+// Permite que el frontend se conecte sin bloqueos de seguridad
+app.use(cors());
+// Permite entender JSON
 app.use(express.json());
 
-//Ruta de prueba basica
-app.get('/', (req, res) => {
-    res.send('backend funcionando');
-});
+// Conectamos las rutas centralizadas
+app.use('/api/catalogo', catalogoRoutes);
+app.use('/api/cotizaciones', cotizacionRoutes);
 
-//Enciende el Servidor
 app.listen(PORT, () => {
-    console.log(`Servidor corriendo en el puerto ${PORT}`);
+  console.log(`Servidor PROFESIONAL corriendo en el puerto ${PORT}`);
 });
