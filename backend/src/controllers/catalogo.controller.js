@@ -17,3 +17,13 @@ export const crearItemCatalogo = async (req, res) => {
     res.status(400).json({ mensaje: "Error en los datos", detalles: error.errors });
   }
 };
+
+export const obtenerCatalogo = async (req, res) => {
+  try {
+    const productos = await prisma.catalogoItem.findMany();
+    res.status(200).json(productos);
+  } catch (error) { 
+    res.status(500).json({mensaje: "Error al obtener el catalogo", detalles: error.mensaje});
+
+  }
+};
