@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 
 export default function InventoryCard({ item, onEquipoActualizado }) {
   const [showModal, setShowModal] = useState(false);
@@ -6,11 +6,25 @@ export default function InventoryCard({ item, onEquipoActualizado }) {
   const [error, setError] = useState('');
   const [guardando, setGuardando] = useState(false);
 
-  const cerrarModal = () => {
+  const cerrarModal = useCallback(() => {
     setShowModal(false);
     setDescripcion('');
     setError('');
-  };
+  }, []);
+
+  useEffect(() => {
+    if (!showModal || guardando) return;
+
+    const manejarTecla = (event) => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        cerrarModal();
+      }
+    };
+
+    window.addEventListener('keydown', manejarTecla);
+    return () => window.removeEventListener('keydown', manejarTecla);
+  }, [showModal, guardando, cerrarModal]);
 
   const reportarAveria = async (event) => {
     event.preventDefault();
