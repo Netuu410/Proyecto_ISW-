@@ -4,6 +4,7 @@ import Navbar from './components/Navbar';
 import HomePage from './pages/HomePage';
 import InventoryPage from './pages/InventoryPage';
 import CatalogoCotizacionesPage from './pages/CatalogoCotizacionesPage';
+import ColaboradoresPage from './pages/ColaboradoresPage';
 
 export default function App() {
   return (
@@ -15,6 +16,7 @@ export default function App() {
             <Route path="/" element={<HomePage />} />
             <Route path="/inventario" element={<InventoryPage />} />
             <Route path="/cotizaciones" element={<CatalogoCotizacionesPage />} />
+            <Route path="/colaboradores" element={<ColaboradoresPage />} />
           </Routes>
         </main>
       </div>
