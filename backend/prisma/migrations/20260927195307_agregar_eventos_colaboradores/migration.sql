@@ -1,18 +1,4 @@
 -- CreateTable
-CREATE TABLE "Equipo" (
-    "id" SERIAL NOT NULL,
-    "nombre" TEXT NOT NULL,
-    "categoria" TEXT NOT NULL,
-    "imagenUrl" TEXT,
-    "descripcion" TEXT,
-    "estado" TEXT DEFAULT 'Disponible',
-    "precio" DOUBLE PRECISION DEFAULT 0,
-    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-
-    CONSTRAINT "Equipo_pkey" PRIMARY KEY ("id")
-);
-
--- CreateTable
 CREATE TABLE "Evento" (
     "id" SERIAL NOT NULL,
     "nombre" TEXT NOT NULL,

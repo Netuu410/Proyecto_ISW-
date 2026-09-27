@@ -5,6 +5,7 @@ export default function CreateEquipoModal({ isOpen, onClose, onEquipoCreado }) {
     nombre: '',
     categoria: '',
     estado: 'Disponible',
+    origen: 'Propio',
     precio: '',
     stock: 1,
     imagen: '',
@@ -47,6 +48,7 @@ export default function CreateEquipoModal({ isOpen, onClose, onEquipoCreado }) {
         nombre: '',
         categoria: '',
         estado: 'Disponible',
+        origen: 'Propio',
         precio: '',
         stock: 1,
         imagen: '',
@@ -109,16 +111,15 @@ export default function CreateEquipoModal({ isOpen, onClose, onEquipoCreado }) {
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-gray-700 uppercase mb-1">Estado</label>
+              <label className="block text-xs font-bold text-gray-700 uppercase mb-1">Origen</label>
               <select
-                name="estado"
-                value={formData.estado}
+                name="origen"
+                value={formData.origen}
                 onChange={handleChange}
                 className="w-full px-3 py-2 border border-gray-300 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 outline-none bg-white"
               >
-                <option value="Disponible">Disponible</option>
-                <option value="En Uso">En Uso</option>
-                <option value="Mantenimiento">Mantenimiento</option>
+                <option value="Propio">Propio</option>
+                <option value="Arrendado">Arrendado</option>
               </select>
             </div>
           </div>
@@ -130,7 +131,8 @@ export default function CreateEquipoModal({ isOpen, onClose, onEquipoCreado }) {
                 type="number"
                 name="precio"
                 required
-                min="0"
+                min="0.01"
+                step="any"
                 value={formData.precio}
                 onChange={handleChange}
                 placeholder="Ej: 45000"

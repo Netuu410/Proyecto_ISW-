@@ -4,7 +4,7 @@
   "type": "module",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "node --test",
     "migrar": "prisma migrate dev --name init",
     "dev": "node --watch src/index.js",
     "start": "node src/index.js"
