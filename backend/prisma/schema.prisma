@@ -40,3 +40,15 @@ model DetalleCotizacion {
   item           CatalogoItem @relation(fields: [catalogoItemId], references: [id])
   catalogoItemId Int
 }
+
+// 4. Equipos de Inventario
+model Equipo {
+  id        Int      @id @default(autoincrement())
+  nombre      String
+  categoria   String
+  imagenUrl   String?
+  descripcion String?
+  estado      String?  @default("Disponible")
+  precio      Float?   @default(0)
+  createdAt   DateTime @default(now())
+}
