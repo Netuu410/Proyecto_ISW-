@@ -52,3 +52,22 @@ model Equipo {
   precio      Float?   @default(0)
   createdAt   DateTime @default(now())
 }
+
+// 5. Eventos realizados por la productora
+model Evento {
+  id        Int      @id @default(autoincrement())
+  nombre    String
+  estado    String   @default("Pendiente")
+  fecha     DateTime
+  createdAt DateTime @default(now())
+}
+
+// 6. Personal eventual y proveedores
+model Colaborador {
+  id        Int      @id @default(autoincrement())
+  nombre    String
+  tipo      String
+  telefono  String?
+  email     String?
+  createdAt DateTime @default(now())
+}
