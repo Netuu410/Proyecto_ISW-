@@ -55,19 +55,35 @@ model Equipo {
 
 // 5. Eventos realizados por la productora
 model Evento {
-  id        Int      @id @default(autoincrement())
-  nombre    String
-  estado    String   @default("Pendiente")
-  fecha     DateTime
-  createdAt DateTime @default(now())
+  id           Int          @id @default(autoincrement())
+  nombre       String
+  estado       String       @default("Pendiente")
+  fecha        DateTime
+  createdAt    DateTime     @default(now())
+  evaluaciones Evaluacion[]
 }
 
 // 6. Personal eventual y proveedores
 model Colaborador {
-  id        Int      @id @default(autoincrement())
-  nombre    String
-  tipo      String
-  telefono  String?
-  email     String?
-  createdAt DateTime @default(now())
+  id           Int          @id @default(autoincrement())
+  nombre       String
+  tipo         String
+  telefono     String?
+  email        String?
+  createdAt    DateTime     @default(now())
+  evaluaciones Evaluacion[]
+}
+
+// 7. Evaluaciones de desempeño
+model Evaluacion {
+  id            Int         @id @default(autoincrement())
+  estrellas     Int
+  notaInterna   String?
+  fecha         DateTime    @default(now())
+
+  evento        Evento      @relation(fields: [eventoId], references: [id])
+  eventoId      Int
+
+  colaborador   Colaborador @relation(fields: [colaboradorId], references: [id])
+  colaboradorId Int
 }
