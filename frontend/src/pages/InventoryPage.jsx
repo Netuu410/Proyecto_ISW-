@@ -1,52 +1,85 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import InventoryCard from '../components/InventoryCard';
-
-const mockInventory = [
-  {
-    id: 1,
-    nombre: 'Consola de Sonido Behringer 12 Ch',
-    categoria: 'Audio',
-    estado: 'Disponible',
-    precio: 45000,
-    stock: 3,
-    imagen: 'https://images.unsplash.com/photo-1598488035139-bdbb2231ce04?w=500',
-    descripcion: 'Consola analógica de 12 canales con procesador de efectos integrado. Incluye estuche rígido de transporte.'
-  },
-  {
-    id: 2,
-    nombre: 'Foco LED Par 64 RGBW',
-    categoria: 'Iluminación',
-    estado: 'En Uso',
-    precio: 15000,
-    stock: 8,
-    imagen: 'https://images.unsplash.com/photo-1508700115892-45ecd05ae2ad?w=500',
-    descripcion: 'Proyector de luz LED para ambientación de escenarios con control DMX.'
-  },
-  {
-    id: 3,
-    nombre: 'Proyector Epson 4000 Lumens',
-    categoria: 'Audiovisual',
-    estado: 'Mantenimiento',
-    precio: 35000,
-    stock: 1,
-    imagen: 'https://images.unsplash.com/photo-1517604931442-7e0c8ed2963c?w=500',
-    descripcion: 'Proyector de alta definición en mantenimiento preventivo por cambio de filtro.'
-  }
-];
+import CreateEquipoModal from '../components/CreateEquipoModal';
 
 export default function InventoryPage() {
+  const [equipos, setEquipos] = useState([]);
+  const [cargando, setCargando] = useState(true);
+  const [errorApi, setErrorApi] = useState(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+
+  // Obtener equipos reales del backend
+  const cargarEquipos = async () => {
+    setCargando(true);
+    setErrorApi(null);
+    try {
+      const res = await fetch('http://localhost:3000/api/equipos');
+      const data = await res.json();
+      
+      if (!res.ok) {
+        throw new Error(data.error || 'Error en el servidor');
+      }
+
+      // Validar siempre que sea un arreglo
+      setEquipos(Array.isArray(data) ? data : []);
+    } catch (error) {
+      console.error('Error al conectar con la API:', error);
+      setErrorApi(error.message);
+      setEquipos([]);
+    } finally {
+      setCargando(false);
+    }
+  };
+
+  useEffect(() => {
+    cargarEquipos();
+  }, []);
+
   return (
     <div className="max-w-7xl mx-auto space-y-8 pt-4">
-      <header className="border-b border-gray-200 pb-5">
-        <h1 className="text-3xl font-black text-gray-900 tracking-tight">Catálogo de Inventario</h1>
-        <p className="text-gray-500 text-sm mt-1">Gestión y disponibilidad de equipos e insumos en tiempo real.</p>
+      <header className="border-b border-gray-200 pb-5 flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-black text-gray-900 tracking-tight">Catálogo de Inventario</h1>
+          <p className="text-gray-500 text-sm mt-1">Gestión y disponibilidad de equipos e insumos en tiempo real.</p>
+        </div>
+        
+        <button
+          onClick={() => setIsModalOpen(true)}
+          className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow-md transition-all flex items-center gap-2 text-sm self-start md:self-auto"
+        >
+          <span className="text-lg">+</span> Crear Equipo
+        </button>
       </header>
 
-      <main className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-        {mockInventory.map((item) => (
-          <InventoryCard key={item.id} item={item} />
-        ))}
-      </main>
+      {errorApi && (
+        <div className="p-4 bg-red-50 border border-red-200 text-red-700 rounded-2xl text-sm font-semibold">
+          ⚠️ No se pudo cargar el inventario: {errorApi}. Revisa que la base de datos esté encendida.
+        </div>
+      )}
+
+      {cargando ? (
+        <div className="text-center py-16 text-gray-400 font-medium">
+          Cargando inventario desde la base de datos...
+        </div>
+      ) : equipos.length === 0 && !errorApi ? (
+        <div className="text-center py-16 bg-white rounded-2xl border border-dashed border-gray-300 space-y-2">
+          <p className="text-gray-600 font-bold">No hay equipos en la base de datos</p>
+          <p className="text-xs text-gray-400">Haz clic en "+ Crear Equipo" para ingresar el primero.</p>
+        </div>
+      ) : (
+        <main className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          {equipos.map((item) => (
+            <InventoryCard key={item.id} item={item} />
+          ))}
+        </main>
+      )}
+
+      {/* Modal para crear un nuevo registro */}
+      <CreateEquipoModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        onEquipoCreado={cargarEquipos}
+      />
     </div>
   );
 }
