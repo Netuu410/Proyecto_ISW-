@@ -30,10 +30,10 @@ model Cotizacion {
 
 // 3. El Detalle (Tabla intermedia)
 model DetalleCotizacion {
-  id             Int          @id @default(autoincrement())
-  cantidad       Int
-  precioCobrado  Float
-  costoAsumido   Float
+  id            Int   @id @default(autoincrement())
+  cantidad      Int
+  precioCobrado Float
+  costoAsumido  Float
 
   cotizacion     Cotizacion   @relation(fields: [cotizacionId], references: [id])
   cotizacionId   Int
@@ -43,35 +43,70 @@ model DetalleCotizacion {
 
 // 4. Equipos de Inventario
 model Equipo {
-  id        Int      @id @default(autoincrement())
+  id          Int             @id @default(autoincrement())
   nombre      String
   categoria   String
   imagenUrl   String?
   descripcion String?
-  estado      String?  @default("Disponible")
-  precio      Float?   @default(0)
-  createdAt   DateTime @default(now())
-  stock       Int      @default(1)
-  origen      String   @default("Propio")
+  estado      String?         @default("Disponible")
+  precio      Float?          @default(0)
+  createdAt   DateTime        @default(now())
+  stock       Int             @default(1)
+  origen      String          @default("Propio")
   reportes    ReporteAveria[]
   alertas     AlertaStock[]
 }
 
 model ReporteAveria {
-  id          Int      @id @default(autoincrement())
+  id          Int          @id @default(autoincrement())
   equipoId    Int
   descripcion String
-  createdAt   DateTime @default(now())
-  equipo      Equipo   @relation(fields: [equipoId], references: [id])
+  createdAt   DateTime     @default(now())
+  equipo      Equipo       @relation(fields: [equipoId], references: [id])
   alerta      AlertaStock?
 }
 
 model AlertaStock {
+  id        Int           @id @default(autoincrement())
+  equipoId  Int
+  reporteId Int           @unique
+  mensaje   String
+  createdAt DateTime      @default(now())
+  equipo    Equipo        @relation(fields: [equipoId], references: [id])
+  reporte   ReporteAveria @relation(fields: [reporteId], references: [id])
+}
+
+// 5. Eventos realizados por la productora
+model Evento {
+  id           Int          @id @default(autoincrement())
+  nombre       String
+  estado       String       @default("Pendiente")
+  fecha        DateTime
+  createdAt    DateTime     @default(now())
+  evaluaciones Evaluacion[]
+}
+
+// 6. Personal eventual y proveedores
+model Colaborador {
+  id           Int          @id @default(autoincrement())
+  nombre       String
+  tipo         String
+  telefono     String?
+  email        String?
+  createdAt    DateTime     @default(now())
+  evaluaciones Evaluacion[]
+}
+
+// 7. Evaluaciones de desempeño
+model Evaluacion {
   id          Int      @id @default(autoincrement())
-  equipoId    Int
-  reporteId   Int      @unique
-  mensaje     String
-  createdAt   DateTime @default(now())
-  equipo      Equipo   @relation(fields: [equipoId], references: [id])
-  reporte     ReporteAveria @relation(fields: [reporteId], references: [id])
+  estrellas   Int
+  notaInterna String?
+  fecha       DateTime @default(now())
+
+  evento   Evento @relation(fields: [eventoId], references: [id])
+  eventoId Int
+
+  colaborador   Colaborador @relation(fields: [colaboradorId], references: [id])
+  colaboradorId Int
 }
