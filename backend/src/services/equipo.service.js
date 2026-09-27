@@ -1,6 +1,4 @@
-import { PrismaClient } from '@prisma/client';
-
-const prisma = new PrismaClient();
+import { prisma } from '../database.js';
 
 export const obtenerEquiposService = async () => {
   return await prisma.equipo.findMany({
@@ -13,14 +11,13 @@ export const obtenerEquiposService = async () => {
 export const crearEquipoService = async (data) => {
   return await prisma.equipo.create({
     data: {
+      codigo: data.codigo,
       nombre: data.nombre,
-      categoria: data.categoria || 'General',
-      // Soporta 'imagenUrl', 'imagen' o 'imagen_url'
-      imagenUrl: data.imagenUrl || data.imagen || data.imagen_url || null,
+      categoria: data.categoria,
+      imagenUrl: data.imagenUrl || data.imagen || null,
       descripcion: data.descripcion || null,
       estado: data.estado || 'Disponible',
-      // Convierte el precio a número de forma segura
-      precio: data.precio ? parseFloat(data.precio) : 0,
+      precio: data.precio,
     },
   });
 };

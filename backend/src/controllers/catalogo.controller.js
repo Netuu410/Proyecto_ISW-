@@ -14,7 +14,10 @@ export const crearItemCatalogo = async (req, res) => {
     const nuevoItem = await prisma.catalogoItem.create({ data: datosSeguros });
     res.status(201).json(nuevoItem);
   } catch (error) {
-    res.status(400).json({ mensaje: "Error en los datos", detalles: error.errors });
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({ mensaje: "Error en los datos", detalles: error.issues });
+    }
+    res.status(500).json({ mensaje: "Error interno al crear el producto", detalles: [] });
   }
 };
 
@@ -23,7 +26,7 @@ export const obtenerCatalogo = async (req, res) => {
     const productos = await prisma.catalogoItem.findMany();
     res.status(200).json(productos);
   } catch (error) { 
-    res.status(500).json({mensaje: "Error al obtener el catalogo", detalles: error.mensaje});
+    res.status(500).json({mensaje: "Error al obtener el catalogo", detalles: []});
 
   }
 };

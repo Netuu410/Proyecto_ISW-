@@ -40,7 +40,7 @@ export default function InventoryPage() {
       <header className="border-b border-gray-200 pb-5 flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-black text-gray-900 tracking-tight">Catálogo de Inventario</h1>
-          <p className="text-gray-500 text-sm mt-1">Gestión y disponibilidad de equipos e insumos en tiempo real.</p>
+          <p className="text-gray-500 text-sm mt-1">Unidades físicas identificadas por código único. El estado de inventario no indica disponibilidad por fechas.</p>
         </div>
         
         <button

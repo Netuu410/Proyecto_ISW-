@@ -44,6 +44,7 @@ model DetalleCotizacion {
 // 4. Equipos de Inventario
 model Equipo {
   id        Int      @id @default(autoincrement())
+  codigo      String   @unique @default(dbgenerated("('EQ-'::text || upper((gen_random_uuid())::text))"))
   nombre      String
   categoria   String
   imagenUrl   String?
