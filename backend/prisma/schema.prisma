@@ -51,4 +51,27 @@ model Equipo {
   estado      String?  @default("Disponible")
   precio      Float?   @default(0)
   createdAt   DateTime @default(now())
+  stock       Int      @default(1)
+  origen      String   @default("Propio")
+  reportes    ReporteAveria[]
+  alertas     AlertaStock[]
+}
+
+model ReporteAveria {
+  id          Int      @id @default(autoincrement())
+  equipoId    Int
+  descripcion String
+  createdAt   DateTime @default(now())
+  equipo      Equipo   @relation(fields: [equipoId], references: [id])
+  alerta      AlertaStock?
+}
+
+model AlertaStock {
+  id          Int      @id @default(autoincrement())
+  equipoId    Int
+  reporteId   Int      @unique
+  mensaje     String
+  createdAt   DateTime @default(now())
+  equipo      Equipo   @relation(fields: [equipoId], references: [id])
+  reporte     ReporteAveria @relation(fields: [reporteId], references: [id])
 }
