@@ -1,4 +1,4 @@
-# Informe de implementación — Calendario Central y Bloqueo de Traslapes
+# Informe de implementación de requerimientos — Calendario Central y Bloqueo de Traslapes - R1 (Requerimiento #1) - ... 
 
 **Proyecto:** NES Eventos  
 **Responsable:** José Arellano  
