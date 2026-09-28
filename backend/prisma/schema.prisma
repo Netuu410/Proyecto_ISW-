@@ -55,6 +55,7 @@ model Equipo {
   origen      String          @default("Propio")
   reportes    ReporteAveria[]
   alertas     AlertaStock[]
+  reservasAgenda ReservaEquipo[]
 }
 
 model ReporteAveria {
@@ -84,6 +85,7 @@ model Evento {
   fecha        DateTime
   createdAt    DateTime     @default(now())
   evaluaciones Evaluacion[]
+  actividadAgenda ActividadAgenda?
 }
 
 // 6. Personal eventual y proveedores
@@ -109,4 +111,47 @@ model Evaluacion {
 
   colaborador   Colaborador @relation(fields: [colaboradorId], references: [id])
   colaboradorId Int
+}
+
+enum TipoActividadAgenda {
+  EVENTO
+  VISITA_TECNICA
+}
+
+model Recinto {
+  id          Int               @id @default(autoincrement())
+  nombre      String
+  direccion   String
+  clave       String            @unique
+  actividades ActividadAgenda[]
+}
+
+model ActividadAgenda {
+  id             Int                 @id @default(autoincrement())
+  tipo           TipoActividadAgenda
+  nombre         String
+  clienteNombre  String
+  inicio         DateTime            @db.Timestamptz(3)
+  fin            DateTime            @db.Timestamptz(3)
+  estado         String              @default("Reservado")
+  createdAt      DateTime            @default(now()) @db.Timestamptz(3)
+  recintoId      Int
+  recinto        Recinto             @relation(fields: [recintoId], references: [id])
+  eventoId       Int?                @unique
+  evento         Evento?             @relation(fields: [eventoId], references: [id], onDelete: Restrict)
+  reservasEquipo ReservaEquipo[]
+
+  @@index([inicio, fin])
+}
+
+model ReservaEquipo {
+  id          Int             @id @default(autoincrement())
+  actividadId Int
+  actividad   ActividadAgenda @relation(fields: [actividadId], references: [id])
+  equipoId    Int
+  equipo      Equipo          @relation(fields: [equipoId], references: [id])
+  cantidad    Int
+
+  @@unique([actividadId, equipoId])
+  @@index([equipoId])
 }

@@ -18,6 +18,16 @@ export default function Navbar() {
         </Link>
 
         <div className="flex flex-wrap gap-4">
+          <Link
+            to="/calendario"
+            className={`px-4 py-2 rounded-xl text-sm font-bold transition-all ${
+              isActive('/calendario')
+                ? 'bg-indigo-50 text-indigo-600'
+                : 'text-gray-600 hover:text-indigo-600'
+            }`}
+          >
+            Calendario
+          </Link>
           
           <Link
             to="/"
