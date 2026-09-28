@@ -7,6 +7,21 @@ export default function InventoryPage() {
   const [cargando, setCargando] = useState(true);
   const [errorApi, setErrorApi] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [alertas, setAlertas] = useState([]);
+  const [errorAlertas, setErrorAlertas] = useState('');
+
+  const cargarAlertas = async () => {
+    try {
+      const res = await fetch('http://localhost:3000/api/equipos/alertas');
+      if (!res.ok) throw new Error('No se pudieron cargar las alertas de logística');
+      setAlertas(await res.json());
+      setErrorAlertas('');
+    } catch (error) { setErrorAlertas(error.message); }
+  };
+  const actualizarEquipo = (equipo) => {
+    setEquipos(actuales => actuales.map(actual => actual.id === equipo.id ? equipo : actual));
+    cargarAlertas();
+  };
 
   // Obtener equipos reales del backend
   const cargarEquipos = async () => {
@@ -33,6 +48,7 @@ export default function InventoryPage() {
 
   useEffect(() => {
     cargarEquipos();
+    cargarAlertas();
   }, []);
 
   return (
@@ -40,7 +56,7 @@ export default function InventoryPage() {
       <header className="border-b border-gray-200 pb-5 flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-black text-gray-900 tracking-tight">Catálogo de Inventario</h1>
-          <p className="text-gray-500 text-sm mt-1">Unidades físicas identificadas por código único. El estado de inventario no indica disponibilidad por fechas.</p>
+          <p className="text-gray-500 text-sm mt-1">Gestión y disponibilidad de equipos e insumos en tiempo real.</p>
         </div>
         
         <button
@@ -51,6 +67,13 @@ export default function InventoryPage() {
         </button>
       </header>
 
+      {errorAlertas && <p role="alert" className="text-red-700">{errorAlertas}</p>}
+      {alertas.length > 0 && (
+        <section aria-label="Alertas de logística" className="p-4 bg-amber-50 rounded-xl space-y-2">
+          <h2 className="font-bold">Alertas de stock para logística</h2>
+          {alertas.map(alerta => <p key={alerta.id} className="text-sm">{alerta.mensaje}</p>)}
+        </section>
+      )}
       {errorApi && (
         <div className="p-4 bg-red-50 border border-red-200 text-red-700 rounded-2xl text-sm font-semibold">
           ⚠️ No se pudo cargar el inventario: {errorApi}. Revisa que la base de datos esté encendida.
@@ -69,7 +92,7 @@ export default function InventoryPage() {
       ) : (
         <main className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
           {equipos.map((item) => (
-            <InventoryCard key={item.id} item={item} />
+            <InventoryCard key={item.id} item={item} onEquipoActualizado={actualizarEquipo} />
           ))}
         </main>
       )}

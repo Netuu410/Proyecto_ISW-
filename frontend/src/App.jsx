@@ -4,6 +4,8 @@ import Navbar from './components/Navbar';
 import HomePage from './pages/HomePage';
 import InventoryPage from './pages/InventoryPage';
 import CatalogoCotizacionesPage from './pages/CatalogoCotizacionesPage';
+import ColaboradoresPage from './pages/ColaboradoresPage';
+import CalendarPage from './pages/CalendarPage';
 
 export default function App() {
   return (
@@ -15,6 +17,8 @@ export default function App() {
             <Route path="/" element={<HomePage />} />
             <Route path="/inventario" element={<InventoryPage />} />
             <Route path="/cotizaciones" element={<CatalogoCotizacionesPage />} />
+            <Route path="/colaboradores" element={<ColaboradoresPage />} />
+            <Route path="/calendario" element={<CalendarPage />} />
           </Routes>
         </main>
       </div>

@@ -3,10 +3,11 @@ import React, { useState } from 'react';
 export default function CreateEquipoModal({ isOpen, onClose, onEquipoCreado }) {
   const [formData, setFormData] = useState({
     nombre: '',
-    codigo: '',
     categoria: '',
     estado: 'Disponible',
+    origen: 'Propio',
     precio: '',
+    stock: 1,
     imagen: '',
     descripcion: ''
   });
@@ -22,11 +23,6 @@ export default function CreateEquipoModal({ isOpen, onClose, onEquipoCreado }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (cargando) return;
-    if (!Number.isFinite(Number(formData.precio)) || Number(formData.precio) <= 0) {
-      setError('El precio debe ser mayor que cero');
-      return;
-    }
     setError('');
     setCargando(true);
 
@@ -36,8 +32,8 @@ export default function CreateEquipoModal({ isOpen, onClose, onEquipoCreado }) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ...formData,
-          codigo: formData.codigo.trim() || undefined,
           precio: Number(formData.precio),
+          stock: Number(formData.stock)
         })
       });
 
@@ -50,15 +46,16 @@ export default function CreateEquipoModal({ isOpen, onClose, onEquipoCreado }) {
       // Limpiar el formulario
       setFormData({
         nombre: '',
-        codigo: '',
         categoria: '',
         estado: 'Disponible',
+        origen: 'Propio',
         precio: '',
+        stock: 1,
         imagen: '',
         descripcion: ''
       });
 
-      onEquipoCreado(data.equipo); // Recarga la lista desde la BD
+      onEquipoCreado(); // Recarga la lista desde la BD
       onClose();        // Cierra el modal
     } catch (err) {
       setError(err.message);
@@ -69,34 +66,29 @@ export default function CreateEquipoModal({ isOpen, onClose, onEquipoCreado }) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto">
-      <div role="dialog" aria-modal="true" aria-labelledby="crear-equipo-title" className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl relative my-8">
+      <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl relative my-8">
         <button 
           onClick={onClose}
-          disabled={cargando}
-          aria-label="Cerrar creación de equipo"
           className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 font-bold"
         >
           ✕
         </button>
 
-        <h2 id="crear-equipo-title" className="text-xl font-black text-gray-900 mb-2">Crear Equipo</h2>
-        <p className="text-sm text-gray-500 mb-4">Cada registro corresponde a una unidad física con código único.</p>
+        <h2 className="text-xl font-black text-gray-900 mb-4">Crear Equipo</h2>
 
         {error && (
-          <div role="alert" className="mb-4 p-3 bg-red-50 border border-red-200 text-red-600 rounded-xl text-xs font-semibold">
+          <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-600 rounded-xl text-xs font-semibold">
             {error}
           </div>
         )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label htmlFor="equipo-nombre" className="block text-xs font-bold text-gray-700 uppercase mb-1">Nombre del equipo</label>
+            <label className="block text-xs font-bold text-gray-700 uppercase mb-1">Nombre del equipo</label>
             <input
-              id="equipo-nombre"
               type="text"
               name="nombre"
               required
-              minLength={2}
               value={formData.nombre}
               onChange={handleChange}
               placeholder="Ej: Consola Behringer 12 Ch"
@@ -106,13 +98,11 @@ export default function CreateEquipoModal({ isOpen, onClose, onEquipoCreado }) {
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label htmlFor="equipo-categoria" className="block text-xs font-bold text-gray-700 uppercase mb-1">Categoría</label>
+              <label className="block text-xs font-bold text-gray-700 uppercase mb-1">Categoría</label>
               <input
-                id="equipo-categoria"
                 type="text"
                 name="categoria"
                 required
-                minLength={2}
                 value={formData.categoria}
                 onChange={handleChange}
                 placeholder="Ej: Audio"
@@ -121,60 +111,52 @@ export default function CreateEquipoModal({ isOpen, onClose, onEquipoCreado }) {
             </div>
 
             <div>
-              <label htmlFor="equipo-estado" className="block text-xs font-bold text-gray-700 uppercase mb-1">Estado de inventario</label>
+              <label className="block text-xs font-bold text-gray-700 uppercase mb-1">Origen</label>
               <select
-                id="equipo-estado"
-                name="estado"
-                value={formData.estado}
+                name="origen"
+                value={formData.origen}
                 onChange={handleChange}
                 className="w-full px-3 py-2 border border-gray-300 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 outline-none bg-white"
               >
-                <option value="Disponible">Disponible</option>
-                <option value="En Uso">En Uso</option>
-                <option value="Mantenimiento">Mantenimiento</option>
+                <option value="Propio">Propio</option>
+                <option value="Arrendado">Arrendado</option>
               </select>
             </div>
           </div>
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label htmlFor="equipo-precio" className="block text-xs font-bold text-gray-700 uppercase mb-1">Precio diario ($)</label>
+              <label className="block text-xs font-bold text-gray-700 uppercase mb-1">Precio diario ($)</label>
               <input
-                id="equipo-precio"
                 type="number"
                 name="precio"
                 required
-                min="0"
+                min="0.01"
                 step="any"
-                onInput={(e) => e.target.setCustomValidity(Number(e.target.value) > 0 ? '' : 'El precio debe ser mayor que cero')}
                 value={formData.precio}
                 onChange={handleChange}
                 placeholder="Ej: 45000"
                 className="w-full px-3 py-2 border border-gray-300 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
               />
-              <p className="text-xs text-gray-500 mt-1">Debe ser mayor que cero.</p>
             </div>
 
             <div>
-              <label htmlFor="equipo-codigo" className="block text-xs font-bold text-gray-700 uppercase mb-1">Código único</label>
+              <label className="block text-xs font-bold text-gray-700 uppercase mb-1">Stock inicial</label>
               <input
-                id="equipo-codigo"
-                type="text"
-                name="codigo"
-                maxLength={64}
-                placeholder="Ej: GUT-001"
-                value={formData.codigo}
+                type="number"
+                name="stock"
+                required
+                min="1"
+                value={formData.stock}
                 onChange={handleChange}
                 className="w-full px-3 py-2 border border-gray-300 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
               />
-              <p className="text-xs text-gray-500 mt-1">Si lo dejas vacío, se genera al guardar.</p>
             </div>
           </div>
 
           <div>
-            <label htmlFor="equipo-imagen" className="block text-xs font-bold text-gray-700 uppercase mb-1">URL de Imagen</label>
+            <label className="block text-xs font-bold text-gray-700 uppercase mb-1">URL de Imagen</label>
             <input
-              id="equipo-imagen"
               type="url"
               name="imagen"
               value={formData.imagen}
@@ -185,9 +167,8 @@ export default function CreateEquipoModal({ isOpen, onClose, onEquipoCreado }) {
           </div>
 
           <div>
-            <label htmlFor="equipo-descripcion" className="block text-xs font-bold text-gray-700 uppercase mb-1">Descripción</label>
+            <label className="block text-xs font-bold text-gray-700 uppercase mb-1">Descripción</label>
             <textarea
-              id="equipo-descripcion"
               name="descripcion"
               rows="3"
               value={formData.descripcion}
@@ -201,7 +182,6 @@ export default function CreateEquipoModal({ isOpen, onClose, onEquipoCreado }) {
             <button
               type="button"
               onClick={onClose}
-              disabled={cargando}
               className="px-4 py-2 border border-gray-300 rounded-xl text-sm font-semibold text-gray-600 hover:bg-gray-50 transition-colors"
             >
               Cancelar

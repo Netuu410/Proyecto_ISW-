@@ -2,11 +2,11 @@ import { z } from 'zod';
 import { prisma } from '../database.js'; // <- Conexión al Singleton
 
 const cotizacionSchema = z.object({
-  clienteId: z.number().int().positive(),
+  clienteId: z.number().int().positive().max(2147483647),
   items: z.array(
     z.object({
-      catalogoItemId: z.number().int().positive(),
-      cantidad: z.number().int().positive()
+      catalogoItemId: z.number().int().positive().max(2147483647),
+      cantidad: z.number().int().positive().max(2147483647)
     })
   ).min(1, "La cotización debe tener al menos un ítem")
 });
@@ -46,11 +46,9 @@ export const crearCotizacion = async (req, res) => {
     res.status(201).json(nuevaCotizacion);
   } catch (error) {
     if (error instanceof z.ZodError) {
-      return res.status(400).json({ mensaje: "Error al crear cotización", detalles: error.issues });
+      return res.status(400).json({ mensaje: "Error en los datos", detalles: error.issues });
     }
-    if (error.code === 'P2003') {
-      return res.status(409).json({ mensaje: 'Un producto de la cotización ya no existe', detalles: [] });
-    }
-    res.status(500).json({ mensaje: "Error interno al crear cotización", detalles: [] });
+    console.error('Error al crear cotización:', error);
+    res.status(500).json({ mensaje: "Error interno al crear cotización" });
   }
 };
