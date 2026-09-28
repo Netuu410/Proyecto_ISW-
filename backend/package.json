@@ -6,8 +6,8 @@
   "scripts": {
     "test": "node --test",
     "migrar": "prisma migrate dev --name init",
-    "dev": "node --watch src/index.js",
-    "start": "node src/index.js"
+    "dev": "node --env-file=.env --watch src/index.js",
+    "start": "node --env-file=.env src/index.js"
   },
   "dependencies": {
     "@prisma/client": "^5.22.0",

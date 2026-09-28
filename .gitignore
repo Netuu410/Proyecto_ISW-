@@ -1,2 +1,11 @@
 # Documentacion local de trabajo: no incluir en commits ni pull requests.
 /docs/
+/INFORME_REQUERIMIENTOS.md
+AGENDA.md
+agenda.md
+
+# Pruebas locales: conservar en disco sin versionar.
+/backend/test/
+/frontend/test/
+/backend/scripts/verificar-agenda.mjs
+/frontend/scripts/verificar-agenda-browser.mjs
