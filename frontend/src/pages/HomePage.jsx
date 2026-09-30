@@ -1,5 +1,4 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
 
 export default function HomePage() {
   return (
@@ -13,14 +12,6 @@ export default function HomePage() {
           <p className="text-indigo-100 text-base md:text-lg">
             Control de equipos, insumos y logística para la producción de eventos.
           </p>
-          <div className="pt-2">
-            <Link 
-              to="/inventario" 
-              className="inline-block px-6 py-3 bg-white text-indigo-600 font-bold rounded-xl shadow-md hover:bg-indigo-50 transition-all"
-            >
-              Explorar Inventario &rarr;
-            </Link>
-          </div>
         </div>
       </div>
 
