@@ -27,7 +27,8 @@ export const obtenerCatalogo = async (req, res) => {
     const productos = await prisma.catalogoItem.findMany();
     res.status(200).json(productos);
   } catch (error) { 
-    res.status(500).json({mensaje: "Error al obtener el catalogo", detalles: error.mensaje});
+    console.error('Error al obtener el catálogo:', error);
+    res.status(500).json({ mensaje: "Error al obtener el catálogo" });
 
   }
 };
