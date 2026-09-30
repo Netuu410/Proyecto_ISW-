@@ -12,6 +12,7 @@ export default function InventoryCard({ item, onEquipoActualizado }) {
     setError('');
   }, []);
 
+  // Escucha Escape mientras el modal permite cerrar y retira la escucha al salir.
   useEffect(() => {
     if (!showModal || guardando) return;
 
@@ -38,6 +39,7 @@ export default function InventoryCard({ item, onEquipoActualizado }) {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.errores?.[0]?.message || data.error || 'No se pudo reportar la avería');
+      // Avisa a la página para mostrar el equipo confirmado por el backend.
       onEquipoActualizado(data.equipo);
       setDescripcion('');
       setShowModal(false);
