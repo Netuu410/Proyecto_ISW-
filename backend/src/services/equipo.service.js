@@ -11,7 +11,7 @@ export const crearEquipoService = ({ imagen, ...data }) => prisma.equipo.create(
   data: { ...data, imagenUrl: imagen || null },
 });
 
-// La condición evita duplicados concurrentes. Estado, reporte y alerta son atómicos.
+// La transacción guarda estado, reporte y alerta juntos; si falla algo, revierte los cambios.
 export const reportarAveriaService = (id, data, db = prisma) => db.$transaction(async tx => {
   const equipo = await tx.equipo.findUnique({ where: { id } });
   if (!equipo) throw new ErrorEquipo(404, 'El equipo no existe');
@@ -21,6 +21,7 @@ export const reportarAveriaService = (id, data, db = prisma) => db.$transaction(
   if (equipo.estado !== 'Disponible') {
     throw new ErrorEquipo(409, 'El equipo no está disponible para reportar una avería');
   }
+  // Exige que siga disponible para evitar dos reportes simultáneos del mismo equipo.
   const cambio = await tx.equipo.updateMany({
     where: { id, estado: 'Disponible' }, data: { estado: 'Mantenimiento' },
   });

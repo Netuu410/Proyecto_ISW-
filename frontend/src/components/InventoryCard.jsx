@@ -12,6 +12,7 @@ export default function InventoryCard({ item, onEquipoActualizado }) {
     setError('');
   }, []);
 
+  // Escucha Escape mientras el modal permite cerrar y retira la escucha al salir.
   useEffect(() => {
     if (!showModal || guardando) return;
 
@@ -38,6 +39,7 @@ export default function InventoryCard({ item, onEquipoActualizado }) {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.errores?.[0]?.message || data.error || 'No se pudo reportar la avería');
+      // Avisa a la página para mostrar el equipo confirmado por el backend.
       onEquipoActualizado(data.equipo);
       setDescripcion('');
       setShowModal(false);
@@ -140,7 +142,7 @@ export default function InventoryCard({ item, onEquipoActualizado }) {
                   <span className="text-base font-bold text-gray-800">{item.estado === 'Disponible' ? item.stock : 0} unidades</span>
                 </div>
                 <div className="bg-gray-50 p-3 rounded-xl border border-gray-100">
-                  <span className="text-xs text-gray-400 block font-medium">Precio arriendo</span>
+                  <span className="text-xs text-gray-400 block font-medium">Precio de arriendo</span>
                   <span className="text-base font-bold text-indigo-600">${item.precio?.toLocaleString('es-CL')} /día</span>
                 </div>
               </div>

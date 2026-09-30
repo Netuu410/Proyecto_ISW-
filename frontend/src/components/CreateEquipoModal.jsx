@@ -30,6 +30,7 @@ export default function CreateEquipoModal({ isOpen, onClose, onEquipoCreado }) {
       const res = await fetch('http://localhost:3000/api/equipos', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        // Los inputs entregan texto; precio y stock se envían como números al backend.
         body: JSON.stringify({
           ...formData,
           precio: Number(formData.precio),

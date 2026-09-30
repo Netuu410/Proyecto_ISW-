@@ -18,6 +18,7 @@ export default function InventoryPage() {
       setErrorAlertas('');
     } catch (error) { setErrorAlertas(error.message); }
   };
+  // Reemplaza solo el equipo modificado en la lista y vuelve a consultar las alertas.
   const actualizarEquipo = (equipo) => {
     setEquipos(actuales => actuales.map(actual => actual.id === equipo.id ? equipo : actual));
     cargarAlertas();
