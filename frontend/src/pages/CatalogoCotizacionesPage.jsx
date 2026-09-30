@@ -41,13 +41,22 @@ function CatalogoCotizacionesPage() {
         body: JSON.stringify(datosParaBackend)
       });
 
-      if (respuesta.ok) {
-        alert('¡Producto guardado!');
-        setProducto({ nombre: '', categoria: '', precioVenta: '', costoInterno: '' });
-        cargarCatalogo(); 
+      if (!respuesta.ok) {
+        const datos = await respuesta.json().catch(() => null);
+        const detalles = Array.isArray(datos?.detalles)
+          ? datos.detalles.map(error => error.message).filter(Boolean).join('\n')
+          : '';
+        throw new Error(detalles || datos?.mensaje || 'No se pudo guardar el producto. Inténtalo de nuevo.');
       }
+
+      alert('¡Producto guardado!');
+      setProducto({ nombre: '', categoria: '', precioVenta: '', costoInterno: '' });
+      cargarCatalogo();
     } catch (error) {
-      console.error('Error:', error);
+      console.error('Error al guardar el producto:', error);
+      alert(error instanceof TypeError
+        ? 'No se pudo conectar con el servidor. Revisa la conexión e inténtalo de nuevo.'
+        : error.message || 'No se pudo guardar el producto');
     }
   };
 
@@ -76,9 +85,9 @@ function CatalogoCotizacionesPage() {
       if (respuesta.ok) {
         const datosGenerados = await respuesta.json();
         setResultado(datosGenerados); // Guardamos la ganancia calculada para mostrarla en pantalla
-        alert('¡Cotización generada y guardada en PostgreSQL! 🚀');
+        alert('¡Cotización generada y guardada correctamente!');
       } else {
-        alert('Error al generar cotización. Revisa que seleccionaste un producto.');
+        alert('No se pudo generar la cotización. Revisa los datos e inténtalo de nuevo.');
       }
     } catch (error) {
       console.error('Error:', error);
@@ -98,8 +107,8 @@ function CatalogoCotizacionesPage() {
             <form onSubmit={guardarProducto} style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
               <input name="nombre" value={producto.nombre} onChange={(e) => setProducto({ ...producto, nombre: e.target.value })} placeholder="Nombre" required style={{ padding: '8px' }} />
               <input name="categoria" value={producto.categoria} onChange={(e) => setProducto({ ...producto, categoria: e.target.value })} placeholder="Categoría" required style={{ padding: '8px' }} />
-              <input name="precioVenta" type="number" value={producto.precioVenta} onChange={(e) => setProducto({ ...producto, precioVenta: e.target.value })} placeholder="Precio Venta" required style={{ padding: '8px' }} />
-              <input name="costoInterno" type="number" value={producto.costoInterno} onChange={(e) => setProducto({ ...producto, costoInterno: e.target.value })} placeholder="Costo Interno" required style={{ padding: '8px' }} />
+              <input name="precioVenta" type="number" value={producto.precioVenta} onChange={(e) => setProducto({ ...producto, precioVenta: e.target.value })} placeholder="Precio de venta" required style={{ padding: '8px' }} />
+              <input name="costoInterno" type="number" value={producto.costoInterno} onChange={(e) => setProducto({ ...producto, costoInterno: e.target.value })} placeholder="Costo interno" required style={{ padding: '8px' }} />
               <button type="submit" style={{ padding: '10px', background: '#007bff', color: 'white', border: 'none', cursor: 'pointer' }}>Agregar Producto</button>
             </form>
           </div>
@@ -168,8 +177,8 @@ function CatalogoCotizacionesPage() {
         {resultado && (
           <div style={{ background: 'white', padding: '20px', borderLeft: '5px solid #28a745', borderRadius: '4px' }}>
             <h4 style={{ margin: '0 0 10px 0' }}>Resultados del Evento (Cotización #{resultado.id})</h4>
-            <p style={{ margin: '5px 0', fontSize: '18px' }}>Total a cobrar al Cliente: <strong>${resultado.totalVenta}</strong></p>
-            <p style={{ margin: '5px 0', fontSize: '18px', color: '#28a745' }}>Ganancia Neta Empresa: <strong>${resultado.gananciaNeta}</strong></p>
+            <p style={{ margin: '5px 0', fontSize: '18px' }}>Total a cobrar al cliente: <strong>${resultado.totalVenta}</strong></p>
+            <p style={{ margin: '5px 0', fontSize: '18px', color: '#28a745' }}>Ganancia neta de la empresa: <strong>${resultado.gananciaNeta}</strong></p>
           </div>
         )}
       </div>

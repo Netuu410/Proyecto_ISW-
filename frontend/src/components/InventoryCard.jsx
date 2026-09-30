@@ -140,7 +140,7 @@ export default function InventoryCard({ item, onEquipoActualizado }) {
                   <span className="text-base font-bold text-gray-800">{item.estado === 'Disponible' ? item.stock : 0} unidades</span>
                 </div>
                 <div className="bg-gray-50 p-3 rounded-xl border border-gray-100">
-                  <span className="text-xs text-gray-400 block font-medium">Precio arriendo</span>
+                  <span className="text-xs text-gray-400 block font-medium">Precio de arriendo</span>
                   <span className="text-base font-bold text-indigo-600">${item.precio?.toLocaleString('es-CL')} /día</span>
                 </div>
               </div>
