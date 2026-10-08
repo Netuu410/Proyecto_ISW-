@@ -1,3 +1,4 @@
+import { crearEquipo } from '../api/equipos.js';
 import React, { useState } from 'react';
 
 export default function CreateEquipoModal({ isOpen, onClose, onEquipoCreado }) {
@@ -27,22 +28,7 @@ export default function CreateEquipoModal({ isOpen, onClose, onEquipoCreado }) {
     setCargando(true);
 
     try {
-      const res = await fetch('http://localhost:3000/api/equipos', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        // Los inputs entregan texto; precio y stock se envían como números al backend.
-        body: JSON.stringify({
-          ...formData,
-          precio: Number(formData.precio),
-          stock: Number(formData.stock)
-        })
-      });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(data.errores?.[0]?.message || data.error || 'Error al crear equipo');
-      }
+      await crearEquipo({ ...formData, precio: Number(formData.precio), stock: Number(formData.stock) });
 
       // Limpiar el formulario
       setFormData({

@@ -1,3 +1,4 @@
+import { reportarAveriaEquipo } from '../api/equipos.js';
 import React, { useState, useEffect, useCallback } from 'react';
 
 export default function InventoryCard({ item, onEquipoActualizado }) {
@@ -32,13 +33,7 @@ export default function InventoryCard({ item, onEquipoActualizado }) {
     setGuardando(true);
     setError('');
     try {
-      const res = await fetch(`http://localhost:3000/api/equipos/${item.id}/averias`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ descripcion }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.errores?.[0]?.message || data.error || 'No se pudo reportar la avería');
+      const data = await reportarAveriaEquipo(item.id, { descripcion });
       // Avisa a la página para mostrar el equipo confirmado por el backend.
       onEquipoActualizado(data.equipo);
       setDescripcion('');
