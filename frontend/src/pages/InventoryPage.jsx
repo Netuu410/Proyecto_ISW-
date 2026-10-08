@@ -1,3 +1,4 @@
+import { obtenerEquipos, obtenerAlertas } from '../api/equipos.js';
 import React, { useState, useEffect } from 'react';
 import InventoryCard from '../components/InventoryCard';
 import CreateEquipoModal from '../components/CreateEquipoModal';
@@ -12,9 +13,7 @@ export default function InventoryPage() {
 
   const cargarAlertas = async () => {
     try {
-      const res = await fetch('http://localhost:3000/api/equipos/alertas');
-      if (!res.ok) throw new Error('No se pudieron cargar las alertas de logística');
-      setAlertas(await res.json());
+      setAlertas(await obtenerAlertas());
       setErrorAlertas('');
     } catch (error) { setErrorAlertas(error.message); }
   };
@@ -29,12 +28,7 @@ export default function InventoryPage() {
     setCargando(true);
     setErrorApi(null);
     try {
-      const res = await fetch('http://localhost:3000/api/equipos');
-      const data = await res.json();
-      
-      if (!res.ok) {
-        throw new Error(data.error || 'Error en el servidor');
-      }
+      const data = await obtenerEquipos();
 
       // Validar siempre que sea un arreglo
       setEquipos(Array.isArray(data) ? data : []);
@@ -48,8 +42,15 @@ export default function InventoryPage() {
   };
 
   useEffect(() => {
-    cargarEquipos();
-    cargarAlertas();
+    const controller = new AbortController();
+    obtenerEquipos({ signal: controller.signal })
+      .then(datos => { if (!controller.signal.aborted) setEquipos(Array.isArray(datos) ? datos : []); })
+      .catch(error => { if (!controller.signal.aborted) setErrorApi(error.message); })
+      .finally(() => { if (!controller.signal.aborted) setCargando(false); });
+    obtenerAlertas({ signal: controller.signal })
+      .then(datos => { if (!controller.signal.aborted) setAlertas(datos); })
+      .catch(error => { if (!controller.signal.aborted) setErrorAlertas(error.message); });
+    return () => controller.abort();
   }, []);
 
   return (

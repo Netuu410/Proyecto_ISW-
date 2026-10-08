@@ -1,3 +1,4 @@
+import { obtenerColaboradores } from '../api/colaboradores.js';
 import React, { useEffect, useState } from 'react';
 
 export default function ColaboradoresPage() {
@@ -5,32 +6,13 @@ export default function ColaboradoresPage() {
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState('');
 
-  const cargarColaboradores = async () => {
-    try {
-      setCargando(true);
-      setError('');
-
-      const respuesta = await fetch(
-        'http://localhost:3000/api/colaboradores'
-      );
-
-      if (!respuesta.ok) {
-        throw new Error('No se pudieron obtener los colaboradores');
-      }
-
-      const datos = await respuesta.json();
-
-      setColaboradores(datos);
-    } catch (error) {
-      console.error('Error al cargar colaboradores:', error);
-      setError(error.message);
-    } finally {
-      setCargando(false);
-    }
-  };
-
   useEffect(() => {
-    cargarColaboradores();
+    const controller = new AbortController();
+    obtenerColaboradores({ signal: controller.signal })
+      .then(datos => { if (!controller.signal.aborted) setColaboradores(datos); })
+      .catch(error => { if (!controller.signal.aborted) setError(error.message); })
+      .finally(() => { if (!controller.signal.aborted) setCargando(false); });
+    return () => controller.abort();
   }, []);
 
   return (

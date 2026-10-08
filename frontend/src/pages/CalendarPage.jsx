@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
-import { agendaApi } from '../lib/agenda-api';
+import { obtenerActividades, obtenerRecintos, comprobarDisponibilidad, crearActividad, crearRecinto } from '../api/agenda.js';
+import { obtenerEquipos } from '../api/equipos.js';
 import { fechaHoraLocal, aInstanteSantiago, moverMes, diasDelCalendario, rangoMes,
   formatoHorario, ocurreEnDia } from '../lib/agenda-time';
 import './CalendarPage.css';
@@ -56,7 +57,7 @@ export default function CalendarPage() {
   useEffect(() => {
     const controller = new AbortController();
     const params = new URLSearchParams({ ...rangoMes(mes), ...(tipo ? { tipo } : {}) });
-    agendaApi(`/agenda/actividades?${params}`, { signal: controller.signal })
+    obtenerActividades(params, { signal: controller.signal })
       .then(datos => {
         setActividades(datos); setErrorCarga('');
         setSeleccionada(anterior => anterior ? datos.find(actividad => actividad.id === anterior.id) || null : null);
@@ -69,8 +70,8 @@ export default function CalendarPage() {
   useEffect(() => {
     const controller = new AbortController();
     Promise.all([
-      agendaApi('/agenda/recintos', { signal: controller.signal }),
-      agendaApi('/equipos', { signal: controller.signal }),
+      obtenerRecintos({ signal: controller.signal }),
+      obtenerEquipos({ signal: controller.signal }),
     ]).then(([lugares, inventario]) => {
       setRecintos(lugares); setEquipos(inventario); setErrorRecursos(''); setVersionRecursos(actualizacion);
     }).catch(err => { if (err.name !== 'AbortError') setErrorRecursos(err.message); });
@@ -102,13 +103,13 @@ export default function CalendarPage() {
       if (recursos.inicio >= recursos.fin) throw new Error('El término debe ser posterior al inicio');
       if (!recursos.recintoId) throw new Error('Selecciona un recinto');
       if (soloConsulta) {
-        const resultado = await agendaApi('/agenda/disponibilidad', { body: recursos });
+        const resultado = await comprobarDisponibilidad(recursos);
         setConflictos(resultado.conflictos);
         setMensaje(resultado.disponible ? 'Recursos disponibles. Se comprobarán nuevamente al confirmar.' : 'Hay recursos en conflicto. Ajusta el horario o los recursos.');
       } else {
-        const actividad = await agendaApi('/agenda/actividades', { body: {
+        const actividad = await crearActividad({
           ...recursos, tipo: form.tipo, nombre: form.nombre, clienteNombre: form.clienteNombre,
-        } });
+        });
         const fecha = fechaHoraLocal(actividad.inicio).slice(0, 10);
         setMes(fecha.slice(0, 7)); setDia(fecha); setTipo(''); setSeleccionada(actividad);
         setAbierto(false); setActualizacion(value => value + 1);
@@ -125,7 +126,7 @@ export default function CalendarPage() {
     if (guardandoRecinto) return;
     setGuardandoRecinto(true); setErrorRecinto('');
     try {
-      const recinto = await agendaApi('/agenda/recintos', { body: nuevoRecinto });
+      const recinto = await crearRecinto(nuevoRecinto);
       setRecintos(anteriores => [...anteriores, recinto].sort((a, b) => a.nombre.localeCompare(b.nombre)));
       editar('recintoId', String(recinto.id)); setNuevoRecinto({ nombre: '', direccion: '' }); setMostrarRecinto(false);
     } catch (err) { setErrorRecinto(err.message); }

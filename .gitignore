@@ -9,3 +9,10 @@ agenda.md
 /frontend/test/
 /backend/scripts/verificar-agenda.mjs
 /frontend/scripts/verificar-agenda-browser.mjs
+
+# Secretos en cualquier módulo; ejemplos versionables.
+.env
+.env.*
+!.env.example
+!.env.production.example
+/.deploy/
