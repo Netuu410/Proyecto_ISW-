@@ -1,0 +1,14 @@
+.cotizaciones-distribucion { align-items: stretch; }
+.cotizaciones-distribucion > section { min-height: 420px; }
+.cotizaciones-guardadas { contain: size; display: flex; flex-direction: column; min-height: 0; overflow: hidden; }
+.cotizaciones-guardadas > h2, .cotizaciones-guardadas > p { flex-shrink: 0; }
+.cotizaciones-lista { flex: 1; min-height: 0; overflow-y: auto; align-content: start; scrollbar-gutter: stable; padding: 3px .4rem 3px 3px; overscroll-behavior-y: contain; }
+.cotizaciones-lista:focus-visible { outline: 2px solid #818cf8; outline-offset: 2px; border-radius: .5rem; }
+.cotizaciones-lista::-webkit-scrollbar { width: 8px; }
+.cotizaciones-lista::-webkit-scrollbar-thumb { background: #c7d2fe; border-radius: 8px; }
+.cotizaciones-lista::-webkit-scrollbar-track { background: #f8fafc; }
+.cotizaciones-guardadas > .agenda-resumen { flex-shrink: 0; max-height: 50%; overflow-y: auto; margin-bottom: 0; }
+@media (max-width: 1050px) {
+  .cotizaciones-distribucion > section { min-height: 0; }
+  .cotizaciones-guardadas { contain: none; height: 520px; }
+}
