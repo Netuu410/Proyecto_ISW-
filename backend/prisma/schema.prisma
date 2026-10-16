@@ -14,18 +14,22 @@ model CatalogoItem {
   categoria    String
   precioVenta  Float
   costoInterno Float
+  equipoId     Int?
+  equipo       Equipo?             @relation(fields: [equipoId], references: [id], onDelete: Restrict)
   detalles     DetalleCotizacion[]
 }
 
 // 2. La Cabecera de la Cotización
 model Cotizacion {
   id           Int                 @id @default(autoincrement())
-  clienteId    Int
+  clienteId    Int?
+  clienteNombre String?
   fecha        DateTime            @default(now())
   estado       String              @default("Preliminar")
   totalVenta   Float
   gananciaNeta Float
   items        DetalleCotizacion[]
+  actividadAgenda ActividadAgenda?
 }
 
 // 3. El Detalle (Tabla intermedia)
@@ -34,11 +38,14 @@ model DetalleCotizacion {
   cantidad      Int
   precioCobrado Float
   costoAsumido  Float
+  equipoId      Int?
+  equipo        Equipo? @relation(fields: [equipoId], references: [id], onDelete: Restrict)
 
   cotizacion     Cotizacion   @relation(fields: [cotizacionId], references: [id])
   cotizacionId   Int
-  item           CatalogoItem @relation(fields: [catalogoItemId], references: [id])
-  catalogoItemId Int
+  nombreProducto String
+  item           CatalogoItem? @relation(fields: [catalogoItemId], references: [id])
+  catalogoItemId Int?
 }
 
 // 4. Equipos de Inventario
@@ -50,12 +57,15 @@ model Equipo {
   descripcion String?
   estado      String?         @default("Disponible")
   precio      Float?          @default(0)
+  costoInterno Float          @default(0)
   createdAt   DateTime        @default(now())
   stock       Int             @default(1)
   origen      String          @default("Propio")
   reportes    ReporteAveria[]
   alertas     AlertaStock[]
   reservasAgenda ReservaEquipo[]
+  productosCatalogo CatalogoItem[]
+  detallesCotizados DetalleCotizacion[]
 }
 
 model ReporteAveria {
@@ -140,6 +150,8 @@ model ActividadAgenda {
   eventoId       Int?                @unique
   evento         Evento?             @relation(fields: [eventoId], references: [id], onDelete: Restrict)
   reservasEquipo ReservaEquipo[]
+  cotizacionId   Int?                @unique
+  cotizacion     Cotizacion?         @relation(fields: [cotizacionId], references: [id], onDelete: Restrict)
 
   @@index([inicio, fin])
 }

@@ -1,6 +1,7 @@
 import { Prisma } from '@prisma/client';
 import { prisma } from '../database.js';
 import { bloquearRecursos, consultarDisponibilidad } from './disponibilidad.service.js';
+import { detalleCotizacion } from './cotizacion.service.js';
 
 export class ErrorAgenda extends Error {
   constructor(status, message, conflictos = []) {
@@ -10,7 +11,16 @@ export class ErrorAgenda extends Error {
   }
 }
 
-const detalle = { recinto: true, reservasEquipo: { include: { equipo: true } } };
+const detalle = { recinto: true, reservasEquipo: { include: { equipo: true } }, cotizacion: { include: detalleCotizacion } };
+
+export function equiposDeCotizacion(cotizacion, adicionales = []) {
+  const cantidades = new Map();
+  for (const detalle of cotizacion.items) {
+    if (detalle.equipoId) cantidades.set(detalle.equipoId, (cantidades.get(detalle.equipoId) || 0) + detalle.cantidad);
+  }
+  for (const equipo of adicionales) cantidades.set(equipo.equipoId, Math.max(cantidades.get(equipo.equipoId) || 0, equipo.cantidad));
+  return [...cantidades].map(([equipoId, cantidad]) => ({ equipoId, cantidad }));
+}
 
 export const listarActividades = ({ desde, hasta, tipo }, db = prisma) => db.actividadAgenda.findMany({
   where: { inicio: { lt: hasta }, fin: { gt: desde }, ...(tipo ? { tipo } : {}) },
@@ -35,6 +45,16 @@ export const comprobarDisponibilidad = async (datos, db = prisma) => {
 export async function crearActividad(datos, db = prisma) {
   try {
     return await db.$transaction(async tx => {
+      let cotizacion;
+      if (datos.cotizacionId) {
+        if (datos.tipo !== 'EVENTO') throw new ErrorAgenda(400, 'La cotización se agenda como evento');
+        await tx.$queryRaw`SELECT id FROM "Cotizacion" WHERE id = ${datos.cotizacionId} FOR UPDATE`;
+        cotizacion = await tx.cotizacion.findUnique({ where: { id: datos.cotizacionId }, include: detalleCotizacion });
+        if (!cotizacion) throw new ErrorAgenda(404, 'La cotización no existe');
+        if (cotizacion.actividadAgenda || cotizacion.estado !== 'Preliminar') throw new ErrorAgenda(409, 'La cotización ya fue agendada o no está disponible');
+        datos = { ...datos, clienteNombre: cotizacion.clienteNombre || datos.clienteNombre,
+          equipos: equiposDeCotizacion(cotizacion, datos.equipos) };
+      }
       // ReadCommitted es intencional: tras esperar el bloqueo se leen las
       // reservas recién confirmadas por la transacción anterior.
       await bloquearRecursos(tx, datos);
@@ -43,15 +63,18 @@ export async function crearActividad(datos, db = prisma) {
       const evento = datos.tipo === 'EVENTO' ? await tx.evento.create({ data: {
         nombre: datos.nombre, fecha: datos.inicio, estado: 'Reservado',
       } }) : null;
-      return tx.actividadAgenda.create({
+      if (cotizacion) await tx.cotizacion.update({ where: { id: cotizacion.id }, data: { estado: 'Agendada' } });
+      const actividad = await tx.actividadAgenda.create({
         data: {
           tipo: datos.tipo, nombre: datos.nombre, clienteNombre: datos.clienteNombre,
           inicio: datos.inicio, fin: datos.fin, estado: 'Reservado', recintoId: datos.recintoId,
           eventoId: evento?.id,
+          cotizacionId: datos.cotizacionId,
           reservasEquipo: { create: datos.equipos.map(e => ({ equipoId: e.equipoId, cantidad: e.cantidad })) },
         },
         include: detalle,
       });
+      return actividad;
     }, { isolationLevel: Prisma.TransactionIsolationLevel.ReadCommitted, maxWait: 10000, timeout: 15000 });
   } catch (error) {
     if (error instanceof ErrorAgenda) throw error;
