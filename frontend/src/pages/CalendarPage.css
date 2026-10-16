@@ -32,6 +32,10 @@
 .agenda button.seleccionado { border-color: #4f46e5; box-shadow: inset 0 0 0 1px #4f46e5; }
 .agenda button[aria-current="date"] .agenda-numero { background: #4338ca; color: white; border-radius: 50%; padding: 0 .35rem; }
 .agenda-lista { display: grid; gap: .6rem; margin-top: 1rem; }
+.agenda-reservas-lista { max-height: 500px; overflow-y: auto; padding-right: .4rem; scrollbar-gutter: stable; }
+.agenda-reservas-lista::-webkit-scrollbar { width: 8px;}
+.agenda-reservas-lista::-webkit-scrollbar-thumb { background: #c7d2fe; border-radius: 8px;}
+.agenda-reservas-lista::-webkit-scrollbar-track { background: #f8fafc; }
 .agenda button.agenda-tarjeta { display: grid; gap: .4rem; text-align: left; font-size: .8rem; font-weight: 400; }
 .agenda button.agenda-tarjeta[aria-pressed="true"] { border-color: #4338ca; background: #fafaff; }
 .agenda-tarjeta .agenda-etiqueta { justify-self: start; }
