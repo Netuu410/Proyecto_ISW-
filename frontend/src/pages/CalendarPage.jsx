@@ -105,7 +105,14 @@ export default function CalendarPage() {
     return () => controller.abort();
   }, [actualizacion, cotizacionSolicitada]);
 
-  const delDia = actividades.filter(actividad => ocurreEnDia(actividad, dia));
+  const delDia = actividades
+  .filter(actividad => ocurreEnDia(actividad, dia))
+  .sort((a, b) => {
+    const diferencia =
+      new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+
+    return diferencia || b.id - a.id;
+  });
   const tituloMes = new Intl.DateTimeFormat('es-CL', { month: 'long', year: 'numeric', timeZone: 'UTC' })
     .format(new Date(`${mes}-01T12:00:00Z`));
   const editar = (campo, valor) => {
@@ -252,7 +259,7 @@ export default function CalendarPage() {
       <aside className="agenda-panel" aria-label="Actividades y detalle">
         <h2>{new Intl.DateTimeFormat('es-CL', { dateStyle: 'full', timeZone: 'UTC' }).format(new Date(`${dia}T12:00:00Z`))}</h2>
         {!cargando && !errorCarga && !delDia.length && <p className="agenda-vacio">Sin actividades para este día.</p>}
-        {!cargando && !errorCarga && <div className="agenda-lista">{delDia.map(actividad => <button key={actividad.id} className="agenda-tarjeta" aria-pressed={seleccionada?.id === actividad.id} onClick={() => setSeleccionada(actividad)}>
+        {!cargando && !errorCarga && <div className="agenda-lista agenda-reservas-lista">{delDia.map(actividad => <button key={actividad.id} className="agenda-tarjeta" aria-pressed={seleccionada?.id === actividad.id} onClick={() => setSeleccionada(actividad)}>
           <span className={`agenda-etiqueta ${actividad.tipo}`}>{tipos[actividad.tipo]}</span><strong>{actividad.nombre}</strong>
           <span>{formatoHorario(actividad.inicio)} — {formatoHorario(actividad.fin)}</span><span>{actividad.recinto.nombre}</span>
         </button>)}</div>}
