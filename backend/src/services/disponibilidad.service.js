@@ -32,7 +32,7 @@ export function ocupacionMaxima(reservas, inicio, fin) {
 }
 
 export async function consultarDisponibilidad(tx, { inicio, fin, recintoId, equipos }) {
-  const intervalo = { inicio: { lt: fin }, fin: { gt: inicio } };
+    const intervalo = { inicio: { lt: fin }, fin: { gt: inicio }, estado: { not: 'Cancelado' }};
   const recinto = await tx.recinto.findUnique({ where: { id: recintoId } });
   const conflictos = [];
   if (!recinto) {

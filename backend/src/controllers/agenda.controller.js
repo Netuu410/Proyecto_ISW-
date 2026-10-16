@@ -2,9 +2,33 @@ import { z } from 'zod';
 import { ErrorAgenda, listarActividades as listarActividadesService,
   obtenerActividad as obtenerActividadService, comprobarDisponibilidad as comprobarDisponibilidadService,
   crearActividad as crearActividadService, listarRecintos as listarRecintosService,
-  crearRecinto as crearRecintoService } from '../services/agenda.service.js';
+  crearRecinto as crearRecintoService, cancelarActividad as cancelarActividadService
+} from '../services/agenda.service.js';
 import { actividadSchema, disponibilidadSchema, consultaAgendaSchema,
-  agendaIdSchema, recintoSchema } from '../validations/agenda.schema.js';
+  agendaIdSchema, recintoSchema, cancelacionSchema
+} from '../validations/agenda.schema.js';
+
+export const cancelarActividad = async (req, res) => {
+  try {
+    const id = agendaIdSchema.parse(req.params.id);
+    const datos = cancelacionSchema.parse(req.body);
+
+    const comprobante = req.file ? {
+      nombre: req.file.originalname,
+      tipo: req.file.mimetype,
+      contenido: req.file.buffer,
+    } : null;
+
+    const resultado = await cancelarActividadService(id, {
+      ...datos,
+      comprobante,
+    });
+
+    res.json(resultado);
+  } catch (error) {
+    responderError(res, error);
+  }
+};
 
 const responderError = (res, error) => {
   if (error instanceof z.ZodError) return res.status(400).json({ mensaje: 'Revisa los datos de la agenda', errores: error.issues });
