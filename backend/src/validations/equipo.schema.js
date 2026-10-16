@@ -10,6 +10,7 @@ export const equipoSchema = z.object({
   estado: z.literal('Disponible').default('Disponible'),
   origen: z.enum(['Propio', 'Arrendado']).default('Propio'),
   precio: z.number().finite().positive(),
+  costoInterno: z.number().finite().nonnegative().default(0),
   stock: z.number().int().min(1).max(2147483647).default(1),
   imagen: imagenSchema.or(z.literal('')).optional(),
   descripcion: z.string().trim().max(2000).optional(),

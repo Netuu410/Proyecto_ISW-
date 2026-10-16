@@ -1,14 +1,25 @@
 import { useEffect, useMemo, useState } from 'react';
 import { obtenerActividades, obtenerRecintos, comprobarDisponibilidad, crearActividad, crearRecinto } from '../api/agenda.js';
-import { obtenerEquipos } from '../api/equipos.js';
+import { obtenerCotizaciones } from '../api/cotizaciones.js';
+import { Link, useSearchParams } from 'react-router-dom';
 import { fechaHoraLocal, aInstanteSantiago, moverMes, diasDelCalendario, rangoMes,
   formatoHorario, ocurreEnDia } from '../lib/agenda-time';
 import './CalendarPage.css';
+import { moneda } from '../lib/moneda.js';
 
 const tipos = { EVENTO: 'Evento', VISITA_TECNICA: 'Visita técnica' };
 const hoy = () => fechaHoraLocal(new Date()).slice(0, 10);
 const formularioInicial = dia => ({ tipo: 'EVENTO', nombre: '', clienteNombre: '',
   inicio: `${dia}T10:00`, fin: `${dia}T11:00`, recintoId: '', cantidades: {} });
+
+function camposCotizacion(cotizacion) {
+  const cantidades = {};
+  for (const detalle of cotizacion.items) {
+    if (detalle.equipoId) cantidades[detalle.equipoId] = (cantidades[detalle.equipoId] || 0) + detalle.cantidad;
+  }
+  return { tipo: 'EVENTO', cotizacionId: cotizacion.id, clienteNombre: cotizacion.clienteNombre || '',
+    nombre: `Evento · Cotización #${cotizacion.id}`, cantidades };
+}
 
 function Conflictos({ conflictos }) {
   if (!conflictos.length) return null;
@@ -27,12 +38,14 @@ function Conflictos({ conflictos }) {
 }
 
 export default function CalendarPage() {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const cotizacionSolicitada = searchParams.get('cotizacion');
+  const [pendientes, setPendientes] = useState([]);
   const [mes, setMes] = useState(hoy().slice(0, 7));
   const [dia, setDia] = useState(hoy());
   const [tipo, setTipo] = useState('');
   const [actividades, setActividades] = useState([]);
   const [recintos, setRecintos] = useState([]);
-  const [equipos, setEquipos] = useState([]);
   const [seleccionada, setSeleccionada] = useState(null);
   const [cargaTerminada, setCargaTerminada] = useState('');
   const [versionRecursos, setVersionRecursos] = useState(-1);
@@ -49,10 +62,15 @@ export default function CalendarPage() {
   const [mostrarRecinto, setMostrarRecinto] = useState(false);
   const [guardandoRecinto, setGuardandoRecinto] = useState(false);
   const [errorRecinto, setErrorRecinto] = useState('');
+  const [cotizacion, setCotizacion] = useState(null);
   const dias = useMemo(() => diasDelCalendario(mes), [mes]);
   const claveCarga = `${mes}|${tipo}|${actualizacion}`;
   const cargando = cargaTerminada !== claveCarga;
   const recursosListos = versionRecursos === actualizacion;
+  const cantidadesCotizadas = {};
+  for (const detalle of cotizacion?.items || []) {
+    if (detalle.equipoId) cantidadesCotizadas[detalle.equipoId] = (cantidadesCotizadas[detalle.equipoId] || 0) + detalle.cantidad;
+  }
 
   useEffect(() => {
     const controller = new AbortController();
@@ -71,12 +89,21 @@ export default function CalendarPage() {
     const controller = new AbortController();
     Promise.all([
       obtenerRecintos({ signal: controller.signal }),
-      obtenerEquipos({ signal: controller.signal }),
-    ]).then(([lugares, inventario]) => {
-      setRecintos(lugares); setEquipos(inventario); setErrorRecursos(''); setVersionRecursos(actualizacion);
+      obtenerCotizaciones({ signal: controller.signal }),
+    ]).then(([lugares, cotizaciones]) => {
+      setRecintos(lugares); setErrorRecursos(''); setVersionRecursos(actualizacion);
+      const disponibles = cotizaciones.filter(c => c.estado === 'Preliminar' && !c.actividadAgenda);
+      setPendientes(disponibles);
+      if (cotizacionSolicitada) {
+        const elegida = disponibles.find(c => String(c.id) === cotizacionSolicitada);
+        if (elegida) {
+          setCotizacion(elegida); setAbierto(true);
+          setForm(anterior => ({ ...anterior, ...camposCotizacion(elegida) }));
+        } else setError('La cotización solicitada no existe o ya fue agendada. Selecciona una cotización pendiente.');
+      }
     }).catch(err => { if (err.name !== 'AbortError') setErrorRecursos(err.message); });
     return () => controller.abort();
-  }, [actualizacion]);
+  }, [actualizacion, cotizacionSolicitada]);
 
   const delDia = actividades.filter(actividad => ocurreEnDia(actividad, dia));
   const tituloMes = new Intl.DateTimeFormat('es-CL', { month: 'long', year: 'numeric', timeZone: 'UTC' })
@@ -86,7 +113,13 @@ export default function CalendarPage() {
     setConflictos([]); setError(''); setMensaje('');
   };
   const abrir = () => {
+    setCotizacion(null);
     setForm(formularioInicial(dia)); setAbierto(true); setError(''); setConflictos([]); setMensaje('');
+  };
+  const continuarCotizacion = cotizacion => {
+    setCotizacion(cotizacion);
+    setForm(anterior => ({ ...anterior, ...camposCotizacion(cotizacion) }));
+    setError(''); setConflictos([]);
   };
   const cambiarMes = delta => { const siguiente = moverMes(mes, delta); setMes(siguiente); setDia(`${siguiente}-01`); setSeleccionada(null); };
 
@@ -95,13 +128,16 @@ export default function CalendarPage() {
     if (ocupado) return;
     setError(''); setMensaje(''); setConflictos([]); setOcupado(true);
     try {
+      const cantidades = { ...form.cantidades };
+      for (const [id, cantidad] of Object.entries(cantidadesCotizadas)) cantidades[id] = Math.max(Number(cantidades[id]) || 0, cantidad);
       const recursos = {
         inicio: aInstanteSantiago(form.inicio), fin: aInstanteSantiago(form.fin), recintoId: Number(form.recintoId),
-        equipos: Object.entries(form.cantidades).filter(([, cantidad]) => Number(cantidad) > 0)
+        equipos: Object.entries(cantidades).filter(([, cantidad]) => Number(cantidad) > 0)
           .map(([equipoId, cantidad]) => ({ equipoId: Number(equipoId), cantidad: Number(cantidad) })),
       };
       if (recursos.inicio >= recursos.fin) throw new Error('El término debe ser posterior al inicio');
       if (!recursos.recintoId) throw new Error('Selecciona un recinto');
+      if (form.tipo === 'EVENTO' && !form.cotizacionId) throw new Error('Selecciona una cotización guardada');
       if (soloConsulta) {
         const resultado = await comprobarDisponibilidad(recursos);
         setConflictos(resultado.conflictos);
@@ -109,10 +145,12 @@ export default function CalendarPage() {
       } else {
         const actividad = await crearActividad({
           ...recursos, tipo: form.tipo, nombre: form.nombre, clienteNombre: form.clienteNombre,
+          ...(form.cotizacionId ? { cotizacionId: form.cotizacionId } : {}),
         });
         const fecha = fechaHoraLocal(actividad.inicio).slice(0, 10);
         setMes(fecha.slice(0, 7)); setDia(fecha); setTipo(''); setSeleccionada(actividad);
         setAbierto(false); setActualizacion(value => value + 1);
+        setSearchParams({}, { replace: true });
         setMensaje(`${tipos[actividad.tipo]}: reserva confirmada (Reservado).`);
       }
     } catch (err) {
@@ -148,28 +186,30 @@ export default function CalendarPage() {
 
     {abierto && <section className="agenda-panel agenda-formulario" aria-labelledby="form-titulo">
       <div className="agenda-fila"><h2 id="form-titulo">Nueva actividad</h2><button disabled={ocupado} onClick={() => setAbierto(false)}>Cerrar formulario</button></div>
+      {cotizacion && <div className="agenda-resumen">
+        <p>Cotización seleccionada · Asigna el recinto y horario del cliente.</p>
+        <h3>Cotización #{cotizacion.id} · {cotizacion.clienteNombre || `Cliente ${cotizacion.clienteId}`}</h3>
+        <ul>{cotizacion.items.map(item => <li key={item.id}>{item.nombreProducto} × {item.cantidad} · {moneda(item.precioCobrado * item.cantidad)}</li>)}</ul>
+        <p>Total: <strong>{moneda(cotizacion.totalVenta)}</strong></p>
+        <p className="agenda-suave">Si cierras este formulario, puedes retomar la cotización desde las pendientes.</p>
+      </div>}
       <form onSubmit={enviar}>
         <fieldset disabled={ocupado || guardandoRecinto}>
           <div className="agenda-campos">
-            <label>Tipo<select value={form.tipo} onChange={e => editar('tipo', e.target.value)}>{Object.entries(tipos).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
+            <label>Tipo<select value={form.tipo} onChange={e => { setCotizacion(null); setForm(anterior => ({ ...anterior, tipo: e.target.value, cotizacionId: undefined, clienteNombre: '', cantidades: {} })); setConflictos([]); setError(''); }}>{Object.entries(tipos).map(([value, nombre]) => <option key={value} value={value}>{nombre}</option>)}</select></label>
+            {form.tipo === 'EVENTO' && <label>Cotización del cliente<select required value={form.cotizacionId || ''} onChange={e => {
+              const elegida = pendientes.find(c => c.id === Number(e.target.value));
+              if (elegida) continuarCotizacion(elegida);
+              else { setCotizacion(null); setForm(anterior => ({ ...anterior, cotizacionId: undefined, clienteNombre: '', cantidades: {} })); }
+            }}><option value="">Selecciona una cotización guardada</option>{pendientes.map(c => <option key={c.id} value={c.id}>#{c.id} · {c.clienteNombre || `Cliente ${c.clienteId}`} · {moneda(c.totalVenta)}</option>)}</select></label>}
             <label>Nombre de la actividad<input required maxLength={160} value={form.nombre} onChange={e => editar('nombre', e.target.value)} /></label>
-            <label>Cliente<input required maxLength={160} value={form.clienteNombre} onChange={e => editar('clienteNombre', e.target.value)} placeholder="Nombre del cliente o empresa" /></label>
+            <label>Cliente<input required readOnly={!!cotizacion?.clienteNombre} maxLength={160} value={form.clienteNombre} onChange={e => editar('clienteNombre', e.target.value)} placeholder="Nombre del cliente o empresa" /></label>
             <label>Recinto<select required value={form.recintoId} onChange={e => editar('recintoId', e.target.value)}><option value="">Selecciona un recinto</option>{recintos.map(recinto => <option key={recinto.id} value={recinto.id}>{recinto.nombre} — {recinto.direccion}</option>)}</select></label>
             <label>Inicio en Santiago<input required type="datetime-local" value={form.inicio} onChange={e => editar('inicio', e.target.value)} /></label>
             <label>Término en Santiago<input required type="datetime-local" value={form.fin} onChange={e => editar('fin', e.target.value)} /></label>
           </div>
+          {form.tipo === 'EVENTO' && <p className="agenda-suave">Las cotizaciones se crean en la página <Link to="/cotizaciones">Cotizaciones</Link>. Aquí se asignan al recinto y horario.</p>}
           <button type="button" onClick={() => setMostrarRecinto(value => !value)}>Registrar un recinto</button>
-          <h3>Equipos asignados <span className="agenda-suave">(opcional)</span></h3>
-          <p className="agenda-suave">Indica cantidades. El stock operativo se contrastará con las reservas del horario solicitado.</p>
-          <div className="agenda-equipos">
-            {!equipos.length && <p>No hay equipos registrados. Puedes agendar sin equipos.</p>}
-            {equipos.map(equipo => <label key={equipo.id}>
-              <span>{equipo.nombre}<small>{equipo.estado || 'Sin estado'} · stock {equipo.stock} · {equipo.origen}</small></span>
-              <input aria-label={`Cantidad de ${equipo.nombre}`} type="number" min="0" max={equipo.stock} step="1"
-                disabled={equipo.estado !== 'Disponible'} value={form.cantidades[equipo.id] || ''} placeholder="0"
-                onChange={e => editar('cantidades', { ...form.cantidades, [equipo.id]: e.target.value })} />
-            </label>)}
-          </div>
           <p className="agenda-suave">Ambos tipos bloquean el recinto. Se permiten actividades consecutivas sin margen automático.</p>
           <div className="agenda-acciones"><button type="button" onClick={e => enviar(e, true)}>Consultar disponibilidad</button>
             <button className="agenda-primario" type="submit">{ocupado ? 'Comprobando…' : 'Confirmar reserva'}</button></div>
@@ -223,6 +263,10 @@ export default function CalendarPage() {
             <dt>Recinto</dt><dd>{seleccionada.recinto.nombre}<br />{seleccionada.recinto.direccion}</dd><dt>Equipos</dt>
             <dd>{seleccionada.reservasEquipo.length ? <ul>{seleccionada.reservasEquipo.map(reserva => <li key={reserva.equipoId}>{reserva.equipo.nombre} × {reserva.cantidad}</li>)}</ul> : 'Sin equipos asignados'}</dd>
           </dl>
+          {seleccionada.cotizacion && <div className="agenda-resumen"><h3>Cotización #{seleccionada.cotizacion.id}</h3>
+            <ul>{seleccionada.cotizacion.items.map(item => <li key={item.id}>{item.nombreProducto} × {item.cantidad} · {moneda(item.precioCobrado * item.cantidad)}</li>)}</ul>
+            <p>Total: <strong>{moneda(seleccionada.cotizacion.totalVenta)}</strong></p>
+          </div>}
         </section>}
       </aside>
     </div>

@@ -55,5 +55,16 @@
 .agenda-equipos input { width: 5rem; }
 .agenda-acciones { justify-content: flex-end; margin-top: 1rem; }
 .agenda-nuevo-recinto { border-top: 1px solid #cbd5e1; margin-top: 1rem; }
+.agenda-pasos { display: flex; flex-wrap: wrap; gap: 1.5rem; padding: .8rem; background: #eef2ff; border-radius: .6rem; }
+.agenda-pasos span { color: #64748b; }
+.agenda-linea-producto { display: flex; gap: .75rem; align-items: end; flex-wrap: wrap; margin-bottom: .8rem; }
+.agenda-linea-producto label { display: grid; gap: .35rem; flex: 1 1 220px; }
+.agenda-linea-producto label:nth-child(2) { flex: 0 1 110px; }
+.agenda-linea-producto select, .agenda-pendientes select { width: 100%; }
+.agenda-pendientes { margin: 1rem 0; max-width: 650px; }
+.agenda-pendientes label { display: grid; gap: .4rem; }
+.agenda-total { font-size: 1.2rem; }
+.agenda-resumen { margin: 1rem 0; padding: 1rem; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: .75rem; }
+.agenda-resumen ul { list-style: disc; padding-left: 1.3rem; }
 @media (max-width: 1050px) { .agenda-distribucion { grid-template-columns: 1fr; } .agenda-campos { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 600px) { .agenda-panel { padding: .65rem; } .agenda-campos, .agenda-equipos { grid-template-columns: 1fr; } .agenda button.agenda-dia { min-height: 80px; padding: .2rem; } .agenda-dia .agenda-etiqueta { font-size: .6rem; padding: .1rem; } .agenda-filtro { width: 100%; } .agenda h1 { font-size: 1.7rem; } }

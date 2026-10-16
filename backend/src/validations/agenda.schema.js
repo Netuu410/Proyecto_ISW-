@@ -30,6 +30,7 @@ export const actividadSchema = z.object({
   tipo: z.enum(['EVENTO', 'VISITA_TECNICA']),
   nombre: texto(160),
   clienteNombre: texto(160),
+  cotizacionId: id.optional(),
 }).strict().superRefine(intervaloValido).superRefine(equiposUnicos);
 
 export const consultaAgendaSchema = z.object({
