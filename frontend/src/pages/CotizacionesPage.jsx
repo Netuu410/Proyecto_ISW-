@@ -4,6 +4,7 @@ import { obtenerEquipos } from '../api/equipos.js';
 import { crearCotizacion, obtenerCotizaciones } from '../api/cotizaciones.js';
 import { moneda } from '../lib/moneda.js';
 import './CalendarPage.css';
+import './CotizacionesPage.css';
 
 export default function CotizacionesPage() {
   const [productos, setProductos] = useState([]);
@@ -51,7 +52,7 @@ export default function CotizacionesPage() {
     </header>
     {cargando && <p role="status">Cargando inventario y cotizaciones…</p>}
     {errorCarga && <p role="alert" className="agenda-error">{errorCarga} <button onClick={() => { setCargando(true); setErrorCarga(''); setIntento(i => i + 1); }}>Reintentar carga</button></p>}
-    <div className="agenda-distribucion">
+    <div className="agenda-distribucion cotizaciones-distribucion">
       <section className="agenda-panel"><h2>Nueva cotización</h2>
         {error && <p role="alert" className="agenda-error">{error}</p>}
         <form onSubmit={guardar}><fieldset disabled={cargando || guardando || !!errorCarga}>
@@ -71,9 +72,10 @@ export default function CotizacionesPage() {
           <div className="agenda-acciones"><button className="agenda-primario" disabled={!productos.length} type="submit">{guardando ? 'Guardando…' : 'Guardar cotización'}</button></div>
         </fieldset></form>
       </section>
-      <aside className="agenda-panel"><h2>Cotizaciones guardadas</h2>
+      <aside className="agenda-panel cotizaciones-guardadas"><h2>Cotizaciones guardadas</h2>
+        <p className="agenda-suave">Número de operación · de menor a mayor</p>
         {!cargando && !errorCarga && !cotizaciones.length && <p>Aún no hay cotizaciones.</p>}
-        <div className="agenda-lista">{cotizaciones.map(c => <button className="agenda-tarjeta" key={c.id} aria-pressed={seleccionada?.id === c.id} onClick={() => setSeleccionada(c)}>
+        <div className="agenda-lista cotizaciones-lista" role="region" aria-label="Cotizaciones ordenadas por número de operación" tabIndex={0}>{[...cotizaciones].sort((a, b) => a.id - b.id).map(c => <button className="agenda-tarjeta" key={c.id} aria-pressed={seleccionada?.id === c.id} onClick={() => setSeleccionada(c)}>
           <strong>#{c.id} · {c.clienteNombre || `Cliente ${c.clienteId}`}</strong><span>{moneda(c.totalVenta)} · {c.estado}</span>
         </button>)}</div>
         {seleccionada && <section className="agenda-resumen" aria-label="Detalle de cotización"><h3>Cotización #{seleccionada.id}</h3>
