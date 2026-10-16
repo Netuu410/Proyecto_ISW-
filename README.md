@@ -40,7 +40,21 @@ Para una base nueva, o con migraciones pendientes y cuyo destino e historial se 
 npx.cmd prisma migrate deploy
 ```
 
-La base local `nes_eventos` fue comprobada el 28 de septiembre de 2026: tiene las cinco migraciones aplicadas, incluida Agenda, y no necesitó ninguna migración adicional. No usar `prisma migrate reset`, `db push` o eliminación de volúmenes para preparar esta base existente.
+La integración de cotizaciones y agenda agrega las migraciones `20261015000000_cotizacion_agenda` y `20261015010000_cotizar_inventario`. Aplicarlas antes de ejecutar esta versión. No usar `prisma migrate reset`, `db push` o eliminación de volúmenes para preparar esta base existente.
+
+## Cotizar y agendar un evento
+
+1. Crear el producto en **Inventario**, indicando precio, stock y costo interno opcional. El producto aparece directamente en Cotizaciones, sin crear otro registro en Catálogo.
+2. En **Cotizaciones**, indicar el cliente, seleccionar productos del inventario y sus cantidades, y pulsar **Guardar cotización**. Los nombres, precios unitarios y costos se conservan aunque después cambie el inventario.
+3. Pulsar **Agendar esta cotización**, o abrir Calendario → **Agendar actividad** y seleccionar una cotización pendiente.
+4. Elegir recinto, inicio y término; consultar disponibilidad y confirmar la reserva. El servidor incluye siempre los equipos cotizados y comprueba nuevamente su disponibilidad. El formulario de calendario no crea cotizaciones.
+5. Seleccionar el evento en el calendario para ver el recinto, los equipos y la cotización asociada.
+
+Si el recinto está ocupado o se cierra el formulario, la cotización sigue disponible en el selector del calendario. Una cotización puede agendarse una sola vez. Las cotizaciones históricas del antiguo catálogo mantienen su detalle y precios; aquellas sin equipos capturados requieren asignarlos al agendar. Las tablas del antiguo catálogo se conservan para ese historial, y las nuevas cotizaciones usan directamente Inventario.
+
+Las visitas técnicas siguen disponibles eligiendo ese tipo de actividad, sin exigir cotización. Agregar equipos adicionales al agendar no cambia el precio cotizado. El total se calcula con precio unitario por cantidad, sin multiplicarlo automáticamente por la duración del evento.
+
+Prueba opcional de integración local: desde `backend`, ejecutar `$env:RUN_AGENDA_INTEGRATION='1'` y `node --env-file=.env --test tests/cotizacion-agenda.test.js`. Crea fixtures dentro de una transacción que se revierte al terminar, sin dejar registros. Las pruebas unitarias habituales no necesitan PostgreSQL.
 
 ## 3. Ejecutar backend y frontend
 

@@ -8,6 +8,7 @@ export default function CreateEquipoModal({ isOpen, onClose, onEquipoCreado }) {
     estado: 'Disponible',
     origen: 'Propio',
     precio: '',
+    costoInterno: '',
     stock: 1,
     imagen: '',
     descripcion: ''
@@ -28,7 +29,7 @@ export default function CreateEquipoModal({ isOpen, onClose, onEquipoCreado }) {
     setCargando(true);
 
     try {
-      await crearEquipo({ ...formData, precio: Number(formData.precio), stock: Number(formData.stock) });
+      await crearEquipo({ ...formData, precio: Number(formData.precio), costoInterno: Number(formData.costoInterno), stock: Number(formData.stock) });
 
       // Limpiar el formulario
       setFormData({
@@ -37,6 +38,7 @@ export default function CreateEquipoModal({ isOpen, onClose, onEquipoCreado }) {
         estado: 'Disponible',
         origen: 'Propio',
         precio: '',
+        costoInterno: '',
         stock: 1,
         imagen: '',
         descripcion: ''
@@ -142,6 +144,9 @@ export default function CreateEquipoModal({ isOpen, onClose, onEquipoCreado }) {
           </div>
 
           <div>
+            <label className="block text-xs font-bold text-gray-700 mb-1">Costo interno unitario ($, opcional)
+              <input type="number" name="costoInterno" min="0" step="any" value={formData.costoInterno} onChange={handleChange} placeholder="0" className="w-full px-3 py-2 border border-gray-300 rounded-xl text-sm" />
+            </label>
             <label className="block text-xs font-bold text-gray-700 uppercase mb-1">URL de Imagen</label>
             <input
               type="url"

@@ -3,7 +3,7 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import Navbar from './components/Navbar';
 import HomePage from './pages/HomePage';
 import InventoryPage from './pages/InventoryPage';
-import CatalogoCotizacionesPage from './pages/CatalogoCotizacionesPage';
+import CotizacionesPage from './pages/CotizacionesPage';
 import ColaboradoresPage from './pages/ColaboradoresPage';
 import CalendarPage from './pages/CalendarPage';
 
@@ -16,7 +16,7 @@ export default function App() {
           <Routes>
             <Route path="/" element={<HomePage />} />
             <Route path="/inventario" element={<InventoryPage />} />
-            <Route path="/cotizaciones" element={<CatalogoCotizacionesPage />} />
+            <Route path="/cotizaciones" element={<CotizacionesPage />} />
             <Route path="/colaboradores" element={<ColaboradoresPage />} />
             <Route path="/calendario" element={<CalendarPage />} />
           </Routes>

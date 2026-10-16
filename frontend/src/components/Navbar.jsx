@@ -19,17 +19,6 @@ export default function Navbar() {
 
         <div className="flex flex-wrap gap-4">
           <Link
-            to="/calendario"
-            className={`px-4 py-2 rounded-xl text-sm font-bold transition-all ${
-              isActive('/calendario')
-                ? 'bg-indigo-50 text-indigo-600'
-                : 'text-gray-600 hover:text-indigo-600'
-            }`}
-          >
-            Calendario
-          </Link>
-          
-          <Link
             to="/"
             className={`px-4 py-2 rounded-xl text-sm font-bold transition-all ${
               isActive('/')
@@ -38,6 +27,17 @@ export default function Navbar() {
             }`}
           >
             Inicio
+          </Link>
+          
+          <Link
+            to="/Calendario"
+            className={`px-4 py-2 rounded-xl text-sm font-bold transition-all ${
+              isActive('/calendario')
+                ? 'bg-indigo-50 text-indigo-600'
+                : 'text-gray-600 hover:text-indigo-600'
+            }`}
+          >
+            Calendario
           </Link>
 
           <Link
@@ -59,7 +59,7 @@ export default function Navbar() {
                 : 'text-gray-600 hover:text-indigo-600'
             }`}
           >
-            Catálogo y cotizaciones
+            Cotizaciones
           </Link>
 
           <Link
