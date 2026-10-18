@@ -431,21 +431,32 @@ export default function CalendarPage() {
           <span>{formatoHorario(actividad.inicio)} — {formatoHorario(actividad.fin)}</span><span>{actividad.recinto.nombre}</span>
         </button>)}</div>}
         {seleccionada && <section className="agenda-detalle" aria-label="Detalle de actividad">
-                  {seleccionada.estado === 'Reservado' && (
-            <div className="agenda-acciones">
-              <button
-                type="button"
-                className="agenda-peligro"
-                disabled={ocupado || cargando}
-                onClick={() => abrirCancelacion(seleccionada)}>
-                Cancelar reserva
-              </button>
-            </div>)}
           <span className="agenda-estado">{seleccionada.estado}</span><h3>{seleccionada.nombre}</h3>
           <dl><dt>Tipo</dt><dd>{tipos[seleccionada.tipo]}</dd><dt>Cliente</dt><dd>{seleccionada.clienteNombre}</dd>
             <dt>Inicio</dt><dd>{formatoHorario(seleccionada.inicio)}</dd><dt>Término</dt><dd>{formatoHorario(seleccionada.fin)}</dd>
             <dt>Recinto</dt><dd>{seleccionada.recinto.nombre}<br />{seleccionada.recinto.direccion}</dd><dt>Equipos</dt>
-            <dd>{seleccionada.reservasEquipo.length ? <ul>{seleccionada.reservasEquipo.map(reserva => <li key={reserva.equipoId}>{reserva.equipo.nombre} × {reserva.cantidad}</li>)}</ul> : 'Sin equipos asignados'}</dd>
+            <dd className="agenda-equipos-fila"> 
+              <div className="agenda-equipos-texto">
+                {seleccionada.reservasEquipo.length ? (
+                  <ul>
+                    {seleccionada.reservasEquipo.map(reserva => (
+                      <li key={reserva.equipoId}>
+                        {reserva.equipo.nombre} × {reserva.cantidad}
+                      </li>
+                    ))}
+                  </ul>
+                ) : 'Sin equipos asignados'}
+              </div>
+              {seleccionada.estado === 'Reservado' && (
+                <button
+                  type="button"
+                  className="agenda-peligro"
+                  disabled={ocupado || cargando}
+                  onClick={() => abrirCancelacion(seleccionada)}>
+                  Cancelar reserva
+                </button>
+              )}
+            </dd>
           </dl>
           {seleccionada.cotizacion && <div className="agenda-resumen"><h3>Cotización #{seleccionada.cotizacion.id}</h3>
             <ul>{seleccionada.cotizacion.items.map(item => <li key={item.id}>{item.nombreProducto} × {item.cantidad} · {moneda(item.precioCobrado * item.cantidad)}</li>)}</ul>

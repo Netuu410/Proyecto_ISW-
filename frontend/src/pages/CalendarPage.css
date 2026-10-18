@@ -573,6 +573,25 @@
   border-color: #991b1b;
   background: #991b1b;
 }
+
+.agenda-detalle .agenda-equipos-fila {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: .75rem;
+}
+
+.agenda-equipos-fila > .agenda-equipos-texto {
+  flex: 1 1 130px;
+  min-width: 0;
+}
+
+.agenda .agenda-equipos-fila > button {
+  flex-shrink: 0;
+  margin-left: auto;
+}
+
 @media (max-width: 600px) { .agenda .agenda-cancelacion { width: calc(100% - 1.5rem); padding: 1.1rem;} .agenda-cancelacion .agenda-acciones button {flex: 1 1 150px;}}
 @media (max-width: 1050px) { .agenda-distribucion { grid-template-columns: 1fr; } .agenda-campos { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 600px) { .agenda-panel { padding: .65rem; } .agenda-campos, .agenda-equipos { grid-template-columns: 1fr; } .agenda button.agenda-dia { min-height: 80px; padding: .2rem; } .agenda-dia .agenda-etiqueta { font-size: .6rem; padding: .1rem; } .agenda-filtro { width: 100%; } .agenda h1 { font-size: 1.7rem; } }
