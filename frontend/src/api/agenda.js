@@ -4,3 +4,12 @@ export const obtenerRecintos = (opciones) => solicitar('/agenda/recintos', opcio
 export const comprobarDisponibilidad = (body, opciones) => solicitar('/agenda/disponibilidad', { ...opciones, method: 'POST', body });
 export const crearActividad = (body, opciones) => solicitar('/agenda/actividades', { ...opciones, method: 'POST', body });
 export const crearRecinto = (body, opciones) => solicitar('/agenda/recintos', { ...opciones, method: 'POST', body });
+
+export function cancelarActividad(id, { motivo, comprobante }, opciones) {
+  const formulario = new FormData();
+  formulario.append('motivo', motivo);
+  if (comprobante) {
+    formulario.append('comprobante', comprobante);}
+
+  return solicitar(`/agenda/actividades/${id}/cancelar`, { ...opciones, method: 'PATCH', body: formulario,});
+}

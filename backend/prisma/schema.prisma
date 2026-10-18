@@ -44,7 +44,7 @@ model DetalleCotizacion {
   cotizacion     Cotizacion   @relation(fields: [cotizacionId], references: [id])
   cotizacionId   Int
   nombreProducto String
-  item           CatalogoItem? @relation(fields: [catalogoItemId], references: [id])
+  item           CatalogoItem? @relation(fields: [catalogoItemId], references: [id], onDelete: Restrict)
   catalogoItemId Int?
 }
 
@@ -123,6 +123,7 @@ model Evaluacion {
   colaboradorId Int
 }
 
+// 8. Calendario; gestion de reservas.
 enum TipoActividadAgenda {
   EVENTO
   VISITA_TECNICA
@@ -145,6 +146,12 @@ model ActividadAgenda {
   fin            DateTime            @db.Timestamptz(3)
   estado         String              @default("Reservado")
   createdAt      DateTime            @default(now()) @db.Timestamptz(3)
+  canceladaAt    DateTime?           @db.Timestamptz(3)
+  motivoCancelacion    String?
+  detalleCancelacion   Json?
+  comprobanteNombre   String?
+  comprobanteTipo     String?
+  comprobanteContenido Bytes?
   recintoId      Int
   recinto        Recinto             @relation(fields: [recintoId], references: [id])
   eventoId       Int?                @unique

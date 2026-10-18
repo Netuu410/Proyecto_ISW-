@@ -23,7 +23,7 @@ export function equiposDeCotizacion(cotizacion, adicionales = []) {
 }
 
 export const listarActividades = ({ desde, hasta, tipo }, db = prisma) => db.actividadAgenda.findMany({
-  where: { inicio: { lt: hasta }, fin: { gt: desde }, ...(tipo ? { tipo } : {}) },
+  where: { inicio: { lt: hasta }, fin: { gt: desde }, estado: { not: 'Cancelado' }, ...(tipo ? { tipo } : {}) },
   include: detalle,
   orderBy: [{ inicio: 'asc' }, { id: 'asc' }],
 });
@@ -86,6 +86,121 @@ export async function crearActividad(datos, db = prisma) {
     if (['P2034', 'P2028'].includes(error.code)) {
       throw new ErrorAgenda(409, 'La disponibilidad cambió o los recursos están ocupados. Vuelve a confirmar.');
     }
+    throw error;
+  }
+}
+
+export async function cancelarActividad( id, { motivo, comprobante = null }, db = prisma) {
+  try {
+    return await db.$transaction(async tx => {
+      const referencia = await tx.actividadAgenda.findUnique({
+        where: { id },
+        select: {
+          recintoId: true,
+          cotizacionId: true,
+          eventoId: true,
+          reservasEquipo: {
+            select: { equipoId: true, cantidad: true },
+          },
+        },
+      });
+
+      if (!referencia) {
+        throw new ErrorAgenda(404, 'La actividad no existe');
+      }
+
+      if (referencia.cotizacionId) {
+        await tx.$queryRaw`SELECT id FROM "Cotizacion"
+          WHERE id = ${referencia.cotizacionId} FOR UPDATE`;
+      }
+
+      await bloquearRecursos(tx, {
+        recintoId: referencia.recintoId,
+        equipos: referencia.reservasEquipo,
+      });
+
+      await tx.$queryRaw`SELECT id FROM "ActividadAgenda"
+        WHERE id = ${id} FOR UPDATE`;
+
+      if (referencia.eventoId) {
+        await tx.$queryRaw`SELECT id FROM "Evento"
+          WHERE id = ${referencia.eventoId} FOR UPDATE`;
+      }
+
+      const actividad = await tx.actividadAgenda.findUnique({
+        where: { id }, select: {
+            id: true,
+            tipo: true,
+            nombre: true,
+            clienteNombre: true,
+            inicio: true,
+            fin: true,
+            estado: true,
+            createdAt: true,
+            recintoId: true,
+            eventoId: true,
+            cotizacionId: true,
+            ...detalle,
+            evento: { select: { estado: true } },
+        },
+      });
+
+      if (!actividad) {
+        throw new ErrorAgenda(404, 'La actividad no existe');
+      }
+
+      if (actividad.estado !== 'Reservado') {
+        throw new ErrorAgenda(409, 'Solo se pueden cancelar actividades reservadas');
+      }
+
+      if (actividad.evento?.estado === 'Finalizado') {
+        throw new ErrorAgenda(409, 'No se puede cancelar un evento finalizado');
+      }
+
+      const detalleCancelacion = JSON.parse(JSON.stringify(actividad));
+
+      if (actividad.cotizacionId) {
+        await tx.cotizacion.update({
+          where: { id: actividad.cotizacionId },
+          data: { estado: 'Cancelada' },
+        });
+      }
+
+      if (actividad.eventoId) {
+        await tx.evento.update({
+          where: { id: actividad.eventoId },
+          data: { estado: 'Cancelado' },
+        });
+      }
+
+      return await tx.actividadAgenda.update({
+        where: { id },
+        data: {
+          estado: 'Cancelado',
+          canceladaAt: new Date(),
+          motivoCancelacion: motivo,
+          detalleCancelacion,
+          comprobanteNombre: comprobante?.nombre ?? null,
+          comprobanteTipo: comprobante?.tipo ?? null,
+          comprobanteContenido: comprobante?.contenido ?? null,
+        },
+        select: { id: true, estado: true, canceladaAt: true },
+      });
+    }, {
+      isolationLevel: Prisma.TransactionIsolationLevel.ReadCommitted,
+      maxWait: 10000,
+      timeout: 15000,
+    });
+  } catch (error) {
+    if (error instanceof ErrorAgenda) throw error;
+
+    if (['P2034', 'P2028'].includes(error.code)) {
+      throw new ErrorAgenda(
+        409,
+        'Los recursos están ocupados o la reserva cambió. Vuelve a intentarlo.'
+      );
+    }
+
     throw error;
   }
 }

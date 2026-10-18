@@ -46,3 +46,4 @@ export const consultaAgendaSchema = z.object({
 
 export const agendaIdSchema = z.string().regex(/^[1-9]\d*$/).transform(Number).pipe(id);
 export const recintoSchema = z.object({ nombre: texto(120), direccion: texto(240) }).strict();
+export const cancelacionSchema = z.object({ motivo: texto(2000) }).strict();

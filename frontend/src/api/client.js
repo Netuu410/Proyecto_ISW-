@@ -6,12 +6,13 @@ export function normalizarBase(base = '') {
 export function crearCliente({ base = '', fetchImpl = (...args) => fetch(...args) } = {}) {
   const destino = normalizarBase(base);
   return async function solicitar(ruta, { method = 'GET', body, signal, headers, ...opciones } = {}) {
+    const esFormulario = typeof FormData !== 'undefined' && body instanceof FormData;
     let respuesta;
     try {
       respuesta = await fetchImpl(`${destino}/${ruta.replace(/^\/+/, '')}`, {
         ...opciones, method, signal,
-        headers: { Accept: 'application/json', ...(body !== undefined ? { 'Content-Type': 'application/json' } : {}), ...headers },
-        ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
+        headers: { Accept: 'application/json', ...(body !== undefined && !esFormulario ? { 'Content-Type': 'application/json' } : {}), ...headers, },
+        ...(body !== undefined ? { body: esFormulario ? body : JSON.stringify(body) } : {}),
       });
     } catch (error) {
       if (signal?.aborted || error.name === 'AbortError') throw error;
