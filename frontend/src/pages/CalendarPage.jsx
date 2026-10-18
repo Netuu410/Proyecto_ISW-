@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { obtenerActividades, obtenerRecintos, comprobarDisponibilidad, crearActividad, crearRecinto } from '../api/agenda.js';
+import { obtenerActividades, obtenerRecintos, comprobarDisponibilidad, crearActividad, crearRecinto, cancelarActividad} from '../api/agenda.js';
 import { obtenerCotizaciones } from '../api/cotizaciones.js';
 import { Link, useSearchParams } from 'react-router-dom';
 import { fechaHoraLocal, aInstanteSantiago, moverMes, diasDelCalendario, rangoMes,
@@ -47,6 +47,11 @@ export default function CalendarPage() {
   const [actividades, setActividades] = useState([]);
   const [recintos, setRecintos] = useState([]);
   const [seleccionada, setSeleccionada] = useState(null);
+  const [actividadCancelar, setActividadCancelar] = useState(null);
+  const [motivoCancelacion, setMotivoCancelacion] = useState('');
+  const [comprobanteCancelacion, setComprobanteCancelacion] = useState(null);
+  const [cancelando, setCancelando] = useState(false);
+  const [errorCancelacion, setErrorCancelacion] = useState('');
   const [cargaTerminada, setCargaTerminada] = useState('');
   const [versionRecursos, setVersionRecursos] = useState(-1);
   const [errorCarga, setErrorCarga] = useState('');
@@ -130,6 +135,65 @@ export default function CalendarPage() {
   };
   const cambiarMes = delta => { const siguiente = moverMes(mes, delta); setMes(siguiente); setDia(`${siguiente}-01`); setSeleccionada(null); };
 
+  function abrirCancelacion(actividad) {
+    setMotivoCancelacion('');
+    setComprobanteCancelacion(null);
+    setErrorCancelacion('');
+    setActividadCancelar(actividad);
+  }
+
+  function cerrarCancelacion() {
+    if (cancelando) return;
+
+    setActividadCancelar(null);
+    setMotivoCancelacion('');
+    setComprobanteCancelacion(null);
+    setErrorCancelacion('');
+  }
+
+  async function confirmarCancelacion(event) {
+    event.preventDefault();
+
+    if (!actividadCancelar || cancelando) return;
+
+    const motivo = motivoCancelacion.trim();
+
+    if (!motivo) {
+      setErrorCancelacion('Escribe el motivo de la cancelación.');
+      return;
+    }
+
+    const id = actividadCancelar.id;
+
+    setCancelando(true);
+    setErrorCancelacion('');
+    setMensaje('');
+
+    try {
+      await cancelarActividad(id, {
+        motivo,
+        comprobante: comprobanteCancelacion,
+      });
+
+      setActividades(anteriores =>
+        anteriores.filter(actividad => actividad.id !== id)
+      );
+
+      setSeleccionada(anterior =>
+        anterior?.id === id ? null : anterior
+      );
+
+      setActividadCancelar(null);
+      setComprobanteCancelacion(null);
+      setActualizacion(valor => valor + 1);
+      setMensaje('Reserva cancelada correctamente.');
+    } catch (err) {
+      setErrorCancelacion(err.message);
+    } finally {
+      setCancelando(false);
+    }
+  }
+  
   async function enviar(event, soloConsulta = false) {
     event.preventDefault();
     if (ocupado) return;
@@ -232,6 +296,109 @@ export default function CalendarPage() {
       </form>}
     </section>}
 
+    {actividadCancelar && (
+      <dialog
+        className="agenda-cancelacion"
+        aria-labelledby="cancelacion-titulo"
+        aria-describedby="cancelacion-descripcion"
+        ref={elemento => {
+          if (elemento && !elemento.open) elemento.showModal();
+        }}
+                onCancel={event => {
+          if (event.target !== event.currentTarget) return;
+
+          event.preventDefault();
+          cerrarCancelacion();
+        }}
+      >
+        <h2 id="cancelacion-titulo">Cancelar reserva</h2>
+
+        <p id="cancelacion-descripcion">
+          La reserva se retirará de la agenda y sus recursos quedarán
+          disponibles. Sus datos se conservarán en el historial.
+        </p>
+
+        <div className="agenda-resumen">
+          <strong>{actividadCancelar.nombre}</strong>
+          <p>
+            {formatoHorario(actividadCancelar.inicio)}
+            {' — '}
+            {formatoHorario(actividadCancelar.fin)}
+          </p>
+        </div>
+
+        <form onSubmit={confirmarCancelacion}>
+          <fieldset disabled={cancelando}>
+            <label className="agenda-cancelacion-motivo">
+              Motivo de la cancelación
+              <textarea
+                autoFocus
+                required
+                maxLength={2000}
+                rows={4}
+                value={motivoCancelacion}
+                onChange={event =>
+                  setMotivoCancelacion(event.target.value)
+                }
+                placeholder="Explica por qué se cancela esta reserva."
+              />
+            </label>
+
+            <label className="agenda-adjunto">
+              <span className="agenda-adjunto-icono" aria-hidden="true">
+                +
+              </span>
+              <span>Adjuntar comprobante (opcional)</span>
+              <input
+                type="file"
+                accept=".jpg,.jpeg,.png,.webp,.pdf,.doc,.docx"
+                onChange={event => {
+                  const archivo = event.target.files?.[0] ?? null;
+
+                  if (archivo && archivo.size > 10 * 1024 * 1024) {
+                    event.target.value = '';
+                    setComprobanteCancelacion(null);
+                    setErrorCancelacion(
+                      'El comprobante no puede superar 10 MB.'
+                    );
+                    return;
+                  }
+
+                  setComprobanteCancelacion(archivo);
+                  setErrorCancelacion('');
+                }}
+              />
+            </label>
+
+            <p className="agenda-suave">
+              Imágenes JPG, PNG o WEBP, PDF o Word. Máximo 10 MB.
+            </p>
+
+            {comprobanteCancelacion && (
+              <p className="agenda-adjunto-nombre">
+                {comprobanteCancelacion.name}
+              </p>
+            )}
+
+            {errorCancelacion && (
+              <p role="alert" className="agenda-error">
+                {errorCancelacion}
+              </p>
+            )}
+
+            <div className="agenda-acciones">
+              <button type="button" onClick={cerrarCancelacion}>
+                Volver
+              </button>
+              <button type="submit" className="agenda-peligro">
+                {cancelando ? 'Cancelando…' : 'Confirmar cancelación'}
+              </button>
+            </div>
+          </fieldset>
+        </form>
+      </dialog>
+    )}
+
     <div className="agenda-distribucion">
       <section className="agenda-panel" aria-label="Calendario mensual">
         <div className="agenda-herramientas"><div className="agenda-fila">
@@ -264,6 +431,16 @@ export default function CalendarPage() {
           <span>{formatoHorario(actividad.inicio)} — {formatoHorario(actividad.fin)}</span><span>{actividad.recinto.nombre}</span>
         </button>)}</div>}
         {seleccionada && <section className="agenda-detalle" aria-label="Detalle de actividad">
+                  {seleccionada.estado === 'Reservado' && (
+            <div className="agenda-acciones">
+              <button
+                type="button"
+                className="agenda-peligro"
+                disabled={ocupado || cargando}
+                onClick={() => abrirCancelacion(seleccionada)}>
+                Cancelar reserva
+              </button>
+            </div>)}
           <span className="agenda-estado">{seleccionada.estado}</span><h3>{seleccionada.nombre}</h3>
           <dl><dt>Tipo</dt><dd>{tipos[seleccionada.tipo]}</dd><dt>Cliente</dt><dd>{seleccionada.clienteNombre}</dd>
             <dt>Inicio</dt><dd>{formatoHorario(seleccionada.inicio)}</dd><dt>Término</dt><dd>{formatoHorario(seleccionada.fin)}</dd>
