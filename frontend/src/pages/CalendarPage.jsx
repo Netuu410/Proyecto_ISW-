@@ -42,7 +42,7 @@ export default function CalendarPage() {
   const cotizacionSolicitada = searchParams.get('cotizacion');
   const [pendientes, setPendientes] = useState([]);
   const [mes, setMes] = useState(hoy().slice(0, 7));
-  const [dia, setDia] = useState(hoy());
+  const [dia, setDia] = useState(null);
   const [tipo, setTipo] = useState('');
   const [actividades, setActividades] = useState([]);
   const [recintos, setRecintos] = useState([]);
@@ -78,6 +78,23 @@ export default function CalendarPage() {
   }
 
   useEffect(() => {
+    if (!dia) return;
+
+    const quitarSeleccion = event => {
+      if (!(event.target instanceof Element)) return;
+      if (event.target.closest('.agenda-dia')) return;
+
+      setDia(null);
+    };
+
+    document.addEventListener('click', quitarSeleccion);
+
+    return () => {
+      document.removeEventListener('click', quitarSeleccion);
+    };
+  }, [dia]);
+
+  useEffect(() => {
     const controller = new AbortController();
     const params = new URLSearchParams({ ...rangoMes(mes), ...(tipo ? { tipo } : {}) });
     obtenerActividades(params, { signal: controller.signal })
@@ -110,14 +127,24 @@ export default function CalendarPage() {
     return () => controller.abort();
   }, [actualizacion, cotizacionSolicitada]);
 
-  const delDia = actividades
-  .filter(actividad => ocurreEnDia(actividad, dia))
-  .sort((a, b) => {
-    const diferencia =
-      new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+    const delDia = actividades
+    .filter(actividad => {
+      if (dia) {
+        return ocurreEnDia(actividad, dia);
+      }
 
-    return diferencia || b.id - a.id;
-  });
+      return dias.some(fecha =>
+        fecha.slice(0, 7) === mes &&
+        ocurreEnDia(actividad, fecha)
+      );
+    })
+    .sort((a, b) => {
+      const diferencia =
+        new Date(b.createdAt).getTime() -
+        new Date(a.createdAt).getTime();
+
+      return diferencia || b.id - a.id;
+    });
   const tituloMes = new Intl.DateTimeFormat('es-CL', { month: 'long', year: 'numeric', timeZone: 'UTC' })
     .format(new Date(`${mes}-01T12:00:00Z`));
   const editar = (campo, valor) => {
@@ -126,7 +153,7 @@ export default function CalendarPage() {
   };
   const abrir = () => {
     setCotizacion(null);
-    setForm(formularioInicial(dia)); setAbierto(true); setError(''); setConflictos([]); setMensaje('');
+        setForm(formularioInicial(dia || hoy())); setAbierto(true); setError(''); setConflictos([]); setMensaje('');
   };
   const continuarCotizacion = cotizacion => {
     setCotizacion(cotizacion);
@@ -242,7 +269,7 @@ export default function CalendarPage() {
     finally { setGuardandoRecinto(false); }
   }
 
-  return <section className="agenda" aria-labelledby="agenda-titulo">
+   return <section className="agenda" aria-labelledby="agenda-titulo">
     <header className="agenda-cabecera">
       <div><p className="agenda-eyebrow">NES EVENTOS · COORDINACIÓN</p><h1 id="agenda-titulo">Calendario central</h1>
         <p>Eventos y visitas técnicas · Horario de Santiago de Chile</p></div>
@@ -424,28 +451,39 @@ export default function CalendarPage() {
       </section>
 
       <aside className="agenda-panel" aria-label="Actividades y detalle">
-        <h2>{new Intl.DateTimeFormat('es-CL', { dateStyle: 'full', timeZone: 'UTC' }).format(new Date(`${dia}T12:00:00Z`))}</h2>
-        {!cargando && !errorCarga && !delDia.length && <p className="agenda-vacio">Sin actividades para este día.</p>}
+        <h2> {dia ? new Intl.DateTimeFormat('es-CL', { dateStyle: 'full', timeZone: 'UTC', }).format(new Date(`${dia}T12:00:00Z`)) : `Actividades de ${tituloMes}`} </h2>
+        {!cargando && !errorCarga && !delDia.length && ( <p className="agenda-vacio"> {dia ? 'Sin actividades para este día.' : 'Sin actividades para este mes.'} </p> )}
         {!cargando && !errorCarga && <div className="agenda-lista agenda-reservas-lista">{delDia.map(actividad => <button key={actividad.id} className="agenda-tarjeta" aria-pressed={seleccionada?.id === actividad.id} onClick={() => setSeleccionada(actividad)}>
           <span className={`agenda-etiqueta ${actividad.tipo}`}>{tipos[actividad.tipo]}</span><strong>{actividad.nombre}</strong>
           <span>{formatoHorario(actividad.inicio)} — {formatoHorario(actividad.fin)}</span><span>{actividad.recinto.nombre}</span>
         </button>)}</div>}
         {seleccionada && <section className="agenda-detalle" aria-label="Detalle de actividad">
-                  {seleccionada.estado === 'Reservado' && (
-            <div className="agenda-acciones">
-              <button
-                type="button"
-                className="agenda-peligro"
-                disabled={ocupado || cargando}
-                onClick={() => abrirCancelacion(seleccionada)}>
-                Cancelar reserva
-              </button>
-            </div>)}
           <span className="agenda-estado">{seleccionada.estado}</span><h3>{seleccionada.nombre}</h3>
           <dl><dt>Tipo</dt><dd>{tipos[seleccionada.tipo]}</dd><dt>Cliente</dt><dd>{seleccionada.clienteNombre}</dd>
             <dt>Inicio</dt><dd>{formatoHorario(seleccionada.inicio)}</dd><dt>Término</dt><dd>{formatoHorario(seleccionada.fin)}</dd>
             <dt>Recinto</dt><dd>{seleccionada.recinto.nombre}<br />{seleccionada.recinto.direccion}</dd><dt>Equipos</dt>
-            <dd>{seleccionada.reservasEquipo.length ? <ul>{seleccionada.reservasEquipo.map(reserva => <li key={reserva.equipoId}>{reserva.equipo.nombre} × {reserva.cantidad}</li>)}</ul> : 'Sin equipos asignados'}</dd>
+            <dd className="agenda-equipos-fila"> 
+              <div className="agenda-equipos-texto">
+                {seleccionada.reservasEquipo.length ? (
+                  <ul>
+                    {seleccionada.reservasEquipo.map(reserva => (
+                      <li key={reserva.equipoId}>
+                        {reserva.equipo.nombre} × {reserva.cantidad}
+                      </li>
+                    ))}
+                  </ul>
+                ) : 'Sin equipos asignados'}
+              </div>
+              {seleccionada.estado === 'Reservado' && (
+                <button
+                  type="button"
+                  className="agenda-peligro"
+                  disabled={ocupado || cargando}
+                  onClick={() => abrirCancelacion(seleccionada)}>
+                  Cancelar reserva
+                </button>
+              )}
+            </dd>
           </dl>
           {seleccionada.cotizacion && <div className="agenda-resumen"><h3>Cotización #{seleccionada.cotizacion.id}</h3>
             <ul>{seleccionada.cotizacion.items.map(item => <li key={item.id}>{item.nombreProducto} × {item.cantidad} · {moneda(item.precioCobrado * item.cantidad)}</li>)}</ul>
