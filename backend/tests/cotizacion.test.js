@@ -7,7 +7,7 @@ import { crearCotizacion } from '../src/controllers/cotizacion.controller.js';
 import { crearItemCatalogo } from '../src/controllers/catalogo.controller.js';
 import { prisma } from '../src/database.js';
 
-const productos = [{ id: 1, nombre: 'Parlante', precio: 100, costoInterno: 40, stock: 10 }, { id: 2, nombre: 'Luz', precio: 25.5, costoInterno: 30, stock: 10 }];
+const productos = [{ id: 1, nombre: 'Parlante', estado: 'Disponible', precio: 100, costoInterno: 40, stock: 10 }, { id: 2, nombre: 'Luz', estado: 'Disponible', precio: 25.5, costoInterno: 30, stock: 10 }];
 function simularDB() {
   const escrituras = [];
   return { escrituras, equipo: { findUnique: async ({ where }) => productos.find(p => p.id === where.id) },

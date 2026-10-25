@@ -1,5 +1,9 @@
 import { Prisma } from '@prisma/client';
 
+// Capacidad operativa; las reservas por fecha se descuentan después.
+export const stockDisponible = equipo => equipo.estado === 'Disponible'
+  ? Math.max(0, equipo.stock - (equipo.stockAveriado ?? 0)) : 0;
+
 // Contrato compartido de reservas: cualquier confirmación debe llamar primero a
 // bloquearRecursos dentro de SU MISMA transacción. No cambia estado ni stock.
 export async function bloquearRecursos(tx, { recintoId, equipos }) {
@@ -69,7 +73,7 @@ export async function consultarDisponibilidad(tx, { inicio, fin, recintoId, equi
     const ocupadas = ocupacionMaxima(asignadas.map(reserva => ({
       ...reserva.actividad, cantidad: reserva.cantidad,
     })), inicio, fin);
-    const disponibles = Math.max(0, equipo.stock - ocupadas);
+    const disponibles = Math.max(0, stockDisponible(equipo) - ocupadas);
     if (pedido.cantidad > disponibles) {
       conflictos.push({ tipo: 'EQUIPO', id: equipo.id, nombre: equipo.nombre,
         motivo: 'STOCK_INSUFICIENTE', solicitadas: pedido.cantidad, disponibles,
