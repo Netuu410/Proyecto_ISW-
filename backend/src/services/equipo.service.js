@@ -8,8 +8,23 @@ export class ErrorEquipo extends Error {
   }
 }
 const conDisponibilidad = equipo => ({ ...equipo, stockDisponible: stockDisponible(equipo) });
-export const obtenerEquiposService = async () =>
-  (await prisma.equipo.findMany({ orderBy: { id: 'desc' } })).map(conDisponibilidad);
+export const obtenerEquiposService = async (db = prisma, ahora = new Date()) => {
+  const equipos = await db.equipo.findMany({
+    orderBy: { id: 'desc' },
+    include: { reservasAgenda: {
+      where: { actividad: { estado: { not: 'Cancelado' }, inicio: { lte: ahora }, fin: { gt: ahora } } },
+      select: { cantidad: true },
+    } },
+  });
+  return equipos.map(({ reservasAgenda, ...equipo }) => {
+    const asignadas = reservasAgenda.reduce((total, reserva) => total + reserva.cantidad, 0);
+    // stockDisponible sigue siendo capacidad operativa para cotizar otras fechas.
+    const unidadesEnUso = equipo.estado === 'En Uso'
+      ? Math.max(asignadas, equipo.stock - equipo.stockAveriado) : asignadas;
+    return { ...conDisponibilidad(equipo), unidadesEnUso,
+      unidadesDisponiblesAhora: Math.max(0, stockDisponible(equipo) - unidadesEnUso) };
+  });
+};
 export const crearEquipoService = ({ imagen, ...data }) => prisma.equipo.create({
   data: { ...data, imagenUrl: imagen || null },
 });

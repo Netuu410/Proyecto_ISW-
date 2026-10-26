@@ -69,6 +69,11 @@ export default function InventoryCard({ item, onEquipoActualizado }) {
     'En Uso': 'bg-amber-100 text-amber-800 border-amber-300',
     Mantenimiento: 'bg-rose-100 text-rose-800 border-rose-300',
   };
+  const situaciones = [
+    { nombre: 'Disponible', cantidad: item.unidadesDisponiblesAhora, texto: 'disponibles' },
+    { nombre: 'En Uso', cantidad: item.unidadesEnUso, texto: 'en uso' },
+    { nombre: 'Mantenimiento', cantidad: item.stockAveriado, texto: 'en mantenimiento' },
+  ].filter(situacion => situacion.cantidad > 0);
 
   return (
     <>
@@ -85,9 +90,12 @@ export default function InventoryCard({ item, onEquipoActualizado }) {
               alt={item.nombre}
               className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
             />
-            <span className={`absolute top-3 right-3 text-xs font-semibold px-3 py-1 rounded-full border shadow-sm ${statusStyles[item.estado] || 'bg-gray-100 text-gray-800'}`}>
-              {item.estado}
-            </span>
+            <div className="absolute top-3 right-3 flex flex-col items-end gap-1">
+              {situaciones.map(situacion => <span key={situacion.nombre}
+                className={`text-xs font-semibold px-3 py-1 rounded-full border shadow-sm ${statusStyles[situacion.nombre]}`}>
+                {situacion.cantidad} {situacion.texto}
+              </span>)}
+            </div>
           </div>
 
           {/* Información del Producto */}
@@ -99,7 +107,7 @@ export default function InventoryCard({ item, onEquipoActualizado }) {
               {item.nombre}
             </h3>
             <p className="text-sm text-gray-600 mt-2">
-              {item.stockDisponible} operativas · {item.stockAveriado} en mantenimiento
+              {item.stock} unidades totales
             </p>
           </div>
         </div>
@@ -146,9 +154,12 @@ export default function InventoryCard({ item, onEquipoActualizado }) {
                   <span className="text-xs font-bold text-indigo-600 uppercase tracking-wider">{item.categoria}</span>
                   <h2 className="text-2xl font-bold text-gray-900">{item.nombre}</h2>
                 </div>
-                <span className={`text-xs font-semibold px-3 py-1 rounded-full border ${statusStyles[item.estado]}`}>
-                  {item.estado}
-                </span>
+                <div className="flex flex-col items-end gap-1">
+                  {situaciones.map(situacion => <span key={situacion.nombre}
+                    className={`text-xs font-semibold px-3 py-1 rounded-full border ${statusStyles[situacion.nombre]}`}>
+                    {situacion.cantidad} {situacion.texto}
+                  </span>)}
+                </div>
               </div>
 
               <p className="text-gray-600 text-sm leading-relaxed">
@@ -157,8 +168,9 @@ export default function InventoryCard({ item, onEquipoActualizado }) {
 
               <div className="grid grid-cols-2 gap-4 pt-4 border-t border-gray-100">
                 <div className="bg-gray-50 p-3 rounded-xl border border-gray-100">
-                  <span className="text-xs text-gray-400 block font-medium">Unidades operativas</span>
-                  <span className="text-base font-bold text-gray-800">{item.stockDisponible} unidades</span>
+                  <span className="text-xs text-gray-400 block font-medium">Disponibles ahora</span>
+                  <span className="text-base font-bold text-gray-800">{item.unidadesDisponiblesAhora} unidades</span>
+                  <span className="text-xs text-gray-500 block">En uso: {item.unidadesEnUso}</span>
                   <span className="text-xs text-gray-500 block">Total: {item.stock} · En mantenimiento: {item.stockAveriado}</span>
                 </div>
                 <div className="bg-gray-50 p-3 rounded-xl border border-gray-100">
@@ -187,7 +199,7 @@ export default function InventoryCard({ item, onEquipoActualizado }) {
                   </button>
                 </form>
               )}
-              {item.estado === 'Disponible' ? (
+              {item.estado === 'Disponible' && item.unidadesEnUso === 0 ? (
                 <form onSubmit={reportarAveria} className="space-y-2">
                   <label htmlFor={`cantidad-averia-${item.id}`} className="block text-sm font-semibold">Unidades averiadas</label>
                   <input id={`cantidad-averia-${item.id}`} type="number" required min="1"
@@ -202,7 +214,9 @@ export default function InventoryCard({ item, onEquipoActualizado }) {
                     {guardando ? 'Guardando…' : 'Reportar avería'}
                   </button>
                 </form>
-              ) : <p className="text-sm text-rose-700">No se puede reportar una avería mientras el equipo está {item.estado?.toLowerCase()}.</p>}
+              ) : <p className="text-sm text-rose-700">{item.unidadesEnUso > 0
+                ? 'Hay unidades en uso. Registra la avería al retornar del evento.'
+                : 'No se puede reportar una avería con el estado actual del equipo.'}</p>}
               <div className="pt-2 flex justify-end">
                 <button
                   type="button"
