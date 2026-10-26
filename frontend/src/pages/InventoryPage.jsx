@@ -1,5 +1,6 @@
 import { obtenerEquipos, obtenerAlertas } from '../api/equipos.js';
 import React, { useState, useEffect } from 'react';
+import { resumirInventario, filtrarInventario } from '../lib/inventario.js';
 import InventoryCard from '../components/InventoryCard';
 import CreateEquipoModal from '../components/CreateEquipoModal';
 
@@ -10,55 +11,59 @@ export default function InventoryPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [alertas, setAlertas] = useState([]);
   const [errorAlertas, setErrorAlertas] = useState('');
+  const [filtro, setFiltro] = useState('todos');
+  const [version, setVersion] = useState(0);
+  const resumen = resumirInventario(equipos);
+  const visibles = filtrarInventario(equipos, filtro);
+  const filtros = [
+    { id: 'todos', nombre: 'Todos', estilo: 'bg-indigo-50 border-indigo-200 text-indigo-900' },
+    { id: 'disponibles', nombre: 'Disponibles', estilo: 'bg-emerald-50 border-emerald-200 text-emerald-900' },
+    { id: 'enUso', nombre: 'En uso', estilo: 'bg-amber-50 border-amber-200 text-amber-900' },
+    { id: 'mantenimiento', nombre: 'En mantenimiento', estilo: 'bg-rose-50 border-rose-200 text-rose-900' },
+  ];
 
-  const cargarAlertas = async () => {
-    try {
-      setAlertas(await obtenerAlertas());
-      setErrorAlertas('');
-    } catch (error) { setErrorAlertas(error.message); }
-  };
-  // Reemplaza solo el equipo modificado en la lista y vuelve a consultar las alertas.
-  const actualizarEquipo = (equipo) => {
-    setEquipos(actuales => actuales.map(actual => actual.id === equipo.id ? equipo : actual));
-    cargarAlertas();
-  };
-
-  // Obtener equipos reales del backend
-  const cargarEquipos = async () => {
-    setCargando(true);
-    setErrorApi(null);
-    try {
-      const data = await obtenerEquipos();
-
-      // Validar siempre que sea un arreglo
-      setEquipos(Array.isArray(data) ? data : []);
-    } catch (error) {
-      console.error('Error al conectar con la API:', error);
-      setErrorApi(error.message);
-      setEquipos([]);
-    } finally {
-      setCargando(false);
-    }
-  };
+  // Reconsulta para incluir la ocupación actual del calendario tras cada cambio.
+  const cargarEquipos = () => setVersion(actual => actual + 1);
 
   useEffect(() => {
     const controller = new AbortController();
-    obtenerEquipos({ signal: controller.signal })
-      .then(datos => { if (!controller.signal.aborted) setEquipos(Array.isArray(datos) ? datos : []); })
-      .catch(error => { if (!controller.signal.aborted) setErrorApi(error.message); })
-      .finally(() => { if (!controller.signal.aborted) setCargando(false); });
+    let ultimaPeticion = 0;
+    const actualizar = async () => {
+      const peticion = ++ultimaPeticion;
+      try {
+        const datos = await obtenerEquipos({ signal: controller.signal });
+        if (controller.signal.aborted || peticion !== ultimaPeticion) return;
+        setEquipos(Array.isArray(datos) ? datos : []);
+        setErrorApi(null);
+      } catch (error) {
+        if (controller.signal.aborted || peticion !== ultimaPeticion) return;
+        setErrorApi(error.message);
+        setEquipos([]);
+      } finally {
+        if (!controller.signal.aborted && peticion === ultimaPeticion) setCargando(false);
+      }
+    };
+    actualizar();
+    const intervalo = window.setInterval(actualizar, 30000);
+    window.addEventListener('focus', actualizar);
     obtenerAlertas({ signal: controller.signal })
-      .then(datos => { if (!controller.signal.aborted) setAlertas(datos); })
+      .then(datos => {
+        if (!controller.signal.aborted) { setAlertas(datos); setErrorAlertas(''); }
+      })
       .catch(error => { if (!controller.signal.aborted) setErrorAlertas(error.message); });
-    return () => controller.abort();
-  }, []);
+    return () => {
+      controller.abort();
+      window.clearInterval(intervalo);
+      window.removeEventListener('focus', actualizar);
+    };
+  }, [version]);
 
   return (
     <div className="max-w-7xl mx-auto space-y-8 pt-4">
       <header className="border-b border-gray-200 pb-5 flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-black text-gray-900 tracking-tight">Catálogo de Inventario</h1>
-          <p className="text-gray-500 text-sm mt-1">Gestión y disponibilidad de equipos e insumos en tiempo real.</p>
+          <p className="text-gray-500 text-sm mt-1">Disponibilidad actual según el calendario. Se actualiza cada 30 segundos.</p>
         </div>
         
         <button
@@ -69,10 +74,25 @@ export default function InventoryPage() {
         </button>
       </header>
 
+      <section aria-label="Filtrar inventario por situación actual" className="space-y-3">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+          {filtros.map(opcion => (
+            <button key={opcion.id} type="button" aria-pressed={filtro === opcion.id}
+              disabled={cargando || !!errorApi} onClick={() => setFiltro(opcion.id)}
+              className={`text-left rounded-2xl border p-5 transition-shadow focus-visible:outline focus-visible:outline-2 focus-visible:outline-indigo-600 disabled:opacity-50 ${opcion.estilo} ${filtro === opcion.id ? 'ring-2 ring-indigo-600 shadow-md' : 'hover:shadow-md'}`}>
+              <span className="block text-sm font-semibold">{opcion.nombre}</span>
+              <span className="block text-3xl font-bold mt-1">{cargando || errorApi ? '—' : resumen[opcion.id]}</span>
+              <span className="text-xs">unidades{opcion.id === 'todos' ? ' totales' : ''}</span>
+            </button>
+          ))}
+        </div>
+        <p className="text-sm text-gray-500">Un equipo puede aparecer en varios filtros si tiene unidades en distintas situaciones. Las reservas futuras se consultan en el calendario.</p>
+      </section>
+
       {errorAlertas && <p role="alert" className="text-red-700">{errorAlertas}</p>}
       {alertas.length > 0 && (
         <section aria-label="Alertas de logística" className="p-4 bg-amber-50 rounded-xl space-y-2">
-          <h2 className="font-bold">Alertas de stock para logística</h2>
+          <h2 className="font-bold">Historial de alertas de stock para logística</h2>
           {alertas.map(alerta => <p key={alerta.id} className="text-sm">{alerta.mensaje}</p>)}
         </section>
       )}
@@ -91,10 +111,15 @@ export default function InventoryPage() {
           <p className="text-gray-600 font-bold">No hay equipos en la base de datos</p>
           <p className="text-xs text-gray-400">Haz clic en "+ Crear Equipo" para ingresar el primero.</p>
         </div>
-      ) : (
+      ) : !errorApi && visibles.length === 0 ? (
+        <div role="status" className="text-center py-12 bg-white rounded-2xl border border-gray-200">
+          <p>No hay equipos en «{filtros.find(opcion => opcion.id === filtro).nombre}» ahora.</p>
+          <button type="button" onClick={() => setFiltro('todos')} className="mt-3 text-indigo-700 font-semibold">Ver todos los equipos</button>
+        </div>
+      ) : !errorApi && (
         <main className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          {equipos.map((item) => (
-            <InventoryCard key={item.id} item={item} onEquipoActualizado={actualizarEquipo} />
+          {visibles.map((item) => (
+            <InventoryCard key={item.id} item={item} onEquipoActualizado={cargarEquipos} />
           ))}
         </main>
       )}
