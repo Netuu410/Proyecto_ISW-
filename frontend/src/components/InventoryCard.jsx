@@ -1,15 +1,21 @@
-import { reportarAveriaEquipo } from '../api/equipos.js';
+import { reportarAveriaEquipo, registrarReparacionEquipo } from '../api/equipos.js';
 import React, { useState, useEffect, useCallback } from 'react';
 
 export default function InventoryCard({ item, onEquipoActualizado }) {
   const [showModal, setShowModal] = useState(false);
   const [descripcion, setDescripcion] = useState('');
+  const [cantidad, setCantidad] = useState(1);
+  const [cantidadReparada, setCantidadReparada] = useState(1);
+  const [notaReparacion, setNotaReparacion] = useState('');
   const [error, setError] = useState('');
   const [guardando, setGuardando] = useState(false);
 
   const cerrarModal = useCallback(() => {
     setShowModal(false);
     setDescripcion('');
+    setCantidad(1);
+    setCantidadReparada(1);
+    setNotaReparacion('');
     setError('');
   }, []);
 
@@ -33,11 +39,26 @@ export default function InventoryCard({ item, onEquipoActualizado }) {
     setGuardando(true);
     setError('');
     try {
-      const data = await reportarAveriaEquipo(item.id, { descripcion });
+      const data = await reportarAveriaEquipo(item.id, { descripcion, cantidad: Number(cantidad) });
       // Avisa a la página para mostrar el equipo confirmado por el backend.
       onEquipoActualizado(data.equipo);
       setDescripcion('');
+      setCantidad(1);
       setShowModal(false);
+    } catch (err) { setError(err.message); }
+    finally { setGuardando(false); }
+  };
+
+  const registrarReparacion = async (event) => {
+    event.preventDefault();
+    setGuardando(true);
+    setError('');
+    try {
+      const data = await registrarReparacionEquipo(item.id, {
+        cantidad: Number(cantidadReparada), descripcion: notaReparacion,
+      });
+      onEquipoActualizado(data.equipo);
+      cerrarModal();
     } catch (err) { setError(err.message); }
     finally { setGuardando(false); }
   };
@@ -77,6 +98,9 @@ export default function InventoryCard({ item, onEquipoActualizado }) {
             <h3 className="text-lg font-bold text-gray-800 group-hover:text-indigo-600 transition-colors line-clamp-1">
               {item.nombre}
             </h3>
+            <p className="text-sm text-gray-600 mt-2">
+              {item.stockDisponible} operativas · {item.stockAveriado} en mantenimiento
+            </p>
           </div>
         </div>
 
@@ -133,8 +157,9 @@ export default function InventoryCard({ item, onEquipoActualizado }) {
 
               <div className="grid grid-cols-2 gap-4 pt-4 border-t border-gray-100">
                 <div className="bg-gray-50 p-3 rounded-xl border border-gray-100">
-                  <span className="text-xs text-gray-400 block font-medium">Stock disponible</span>
-                  <span className="text-base font-bold text-gray-800">{item.estado === 'Disponible' ? item.stock : 0} unidades</span>
+                  <span className="text-xs text-gray-400 block font-medium">Unidades operativas</span>
+                  <span className="text-base font-bold text-gray-800">{item.stockDisponible} unidades</span>
+                  <span className="text-xs text-gray-500 block">Total: {item.stock} · En mantenimiento: {item.stockAveriado}</span>
                 </div>
                 <div className="bg-gray-50 p-3 rounded-xl border border-gray-100">
                   <span className="text-xs text-gray-400 block font-medium">Precio de arriendo</span>
@@ -143,13 +168,36 @@ export default function InventoryCard({ item, onEquipoActualizado }) {
               </div>
 
               <p className="text-sm text-gray-600">Origen: {item.origen}</p>
+              {error && <p role="alert" className="text-sm text-red-700">{error}</p>}
+              {item.stockAveriado > 0 && ['Disponible', 'Mantenimiento'].includes(item.estado) && (
+                <form onSubmit={registrarReparacion} className="space-y-2 bg-emerald-50 border border-emerald-200 rounded-xl p-4">
+                  <h3 className="font-bold text-emerald-900">Sacar de mantenimiento</h3>
+                  <p className="text-sm text-gray-600">Registra las unidades reparadas y listas para volver a utilizarse.</p>
+                  <label htmlFor={`reparadas-${item.id}`} className="block text-sm font-semibold">Unidades reparadas</label>
+                  <input id={`reparadas-${item.id}`} type="number" min="1" max={item.stockAveriado}
+                    step="1" required value={cantidadReparada} disabled={guardando}
+                    onChange={e => setCantidadReparada(e.target.value)} className="w-full border rounded-lg p-2" />
+                  <label htmlFor={`nota-reparacion-${item.id}`} className="block text-sm font-semibold">Detalle de la reparación (opcional)</label>
+                  <textarea id={`nota-reparacion-${item.id}`} value={notaReparacion} maxLength={2000}
+                    disabled={guardando} onChange={e => setNotaReparacion(e.target.value)}
+                    className="w-full border rounded-lg p-2" />
+                  <button type="submit" disabled={guardando}
+                    className="bg-emerald-700 hover:bg-emerald-800 text-white rounded-lg px-4 py-2 disabled:opacity-50">
+                    {guardando ? 'Guardando…' : 'Devolver a disponibles'}
+                  </button>
+                </form>
+              )}
               {item.estado === 'Disponible' ? (
                 <form onSubmit={reportarAveria} className="space-y-2">
+                  <label htmlFor={`cantidad-averia-${item.id}`} className="block text-sm font-semibold">Unidades averiadas</label>
+                  <input id={`cantidad-averia-${item.id}`} type="number" required min="1"
+                    max={item.stockDisponible} step="1" value={cantidad}
+                    onChange={e => setCantidad(e.target.value)} disabled={guardando}
+                    className="w-full border rounded-lg p-2" />
                   <label htmlFor={`averia-${item.id}`} className="block text-sm font-semibold">Descripción de la avería</label>
                   <textarea id={`averia-${item.id}`} value={descripcion} onChange={e => setDescripcion(e.target.value)}
                     required minLength={10} maxLength={2000} className="w-full border rounded-lg p-2" />
-                  <p className="text-xs text-gray-500">El reporte enviará todo este registro de inventario a mantenimiento.</p>
-                  {error && <p role="alert" className="text-sm text-red-700">{error}</p>}
+                  <p className="text-xs text-gray-500">Solo las unidades indicadas pasarán a mantenimiento. Las demás seguirán operativas.</p>
                   <button disabled={guardando} className="bg-rose-700 text-white rounded-lg px-4 py-2 disabled:opacity-50">
                     {guardando ? 'Guardando…' : 'Reportar avería'}
                   </button>

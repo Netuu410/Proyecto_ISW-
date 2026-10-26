@@ -58,6 +58,16 @@ Prueba opcional de integración local: desde `backend`, ejecutar `$env:RUN_AGEND
 
 ## 3. Ejecutar backend y frontend
 
+### Averías por unidades
+
+Aplicar también la migración `20261024000000_averias_por_cantidad` y regenerar Prisma antes de iniciar. En el detalle del inventario, indicar la cantidad dañada: con 5 unidades totales y 1 averiada quedan 4 operativas. El stock total se conserva; el estado pasa a Mantenimiento solo cuando todas están averiadas. Cotizaciones y nuevas reservas usan las unidades operativas.
+
+El backend rechaza cantidades inválidas, excesivas y equipos asignados a un evento activo. Las reservas futuras existentes se conservan: la alerta de stock pide revisar esos compromisos. En el detalle, el apartado Sacar de mantenimiento permite registrar unidades reparadas y una nota opcional. Se conserva el historial de averías y se guarda cada reparación; las alertas anteriores son históricas. Aplicar también la migración 20261024010000_reparaciones_equipo.
+
+Los equipos que ya estaban en Mantenimiento conservan todas sus unidades bloqueadas. La cantidad de los reportes históricos queda vacía porque antes no se registraba; no se inventa un dato histórico.
+
+Prueba manual: crear un equipo con stock 5, reportar 1 unidad y comprobar 5 totales / 1 en mantenimiento / 4 operativas. Intentar reportar 5 debe fallar; reportar las 4 restantes debe dejarlo en Mantenimiento. Para probar con PostgreSQL local y rollback, ejecutar desde backend: `node --env-file=.env --test tests/averias.test.js` con la variable `RUN_AVERIAS_INTEGRATION=1`.
+
 Primera terminal, desde `backend`:
 
 ```powershell

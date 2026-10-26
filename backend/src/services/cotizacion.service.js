@@ -1,4 +1,5 @@
 import { prisma } from '../database.js';
+import { stockDisponible } from './disponibilidad.service.js';
 
 export class ProductoNoExisteError extends Error {
   constructor(id) { super(`Producto ${id} no existe`); }
@@ -13,8 +14,9 @@ export async function guardarCotizacion(datosSeguros, db = prisma) {
       const producto = await db.equipo.findUnique({ where: { id: itemRequest.equipoId } });
       if (!producto) throw new ProductoNoExisteError(itemRequest.equipoId);
       if (!(producto.precio > 0)) throw new ProductoNoCotizableError(`Registra un precio válido para ${producto.nombre} en Inventario`);
-      if (itemRequest.cantidad > producto.stock) {
-        throw new ProductoNoCotizableError(`${producto.nombre}: solicitas ${itemRequest.cantidad} unidades, pero el stock del inventario es ${producto.stock}`);
+      const disponibles = stockDisponible(producto);
+      if (itemRequest.cantidad > disponibles) {
+        throw new ProductoNoCotizableError(`${producto.nombre}: solicitas ${itemRequest.cantidad} unidades, pero el stock del inventario es ${disponibles} (unidades operativas)`);
       }
 
       totalVentaCalculado += (producto.precio * itemRequest.cantidad);
