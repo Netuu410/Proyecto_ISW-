@@ -8,8 +8,27 @@ export class ErrorEquipo extends Error {
   }
 }
 const conDisponibilidad = equipo => ({ ...equipo, stockDisponible: stockDisponible(equipo) });
-export const obtenerEquiposService = async () =>
-  (await prisma.equipo.findMany({ orderBy: { id: 'desc' } })).map(conDisponibilidad);
+// La tarjeta y el reporte usan la misma ocupación: inicio incluido, término excluido.
+const actividadVigente = ahora => ({
+  estado: { not: 'Cancelado' }, inicio: { lte: ahora }, fin: { gt: ahora },
+});
+export const obtenerEquiposService = async (db = prisma, ahora = new Date()) => {
+  const equipos = await db.equipo.findMany({
+    orderBy: { id: 'desc' },
+    include: { reservasAgenda: {
+      where: { actividad: actividadVigente(ahora) },
+      select: { cantidad: true },
+    } },
+  });
+  return equipos.map(({ reservasAgenda, ...equipo }) => {
+    const asignadas = reservasAgenda.reduce((total, reserva) => total + reserva.cantidad, 0);
+    // stockDisponible sigue siendo capacidad operativa para cotizar otras fechas.
+    const unidadesEnUso = equipo.estado === 'En Uso'
+      ? Math.max(asignadas, equipo.stock - equipo.stockAveriado) : asignadas;
+    return { ...conDisponibilidad(equipo), unidadesEnUso,
+      unidadesDisponiblesAhora: Math.max(0, stockDisponible(equipo) - unidadesEnUso) };
+  });
+};
 export const crearEquipoService = ({ imagen, ...data }) => prisma.equipo.create({
   data: { ...data, imagenUrl: imagen || null },
 });
@@ -27,13 +46,10 @@ export const reportarAveriaService = (id, data, db = prisma) => db.$transaction(
     throw new ErrorEquipo(409, 'El equipo no está disponible para reportar una avería');
   }
   const ahora = new Date();
-  const enEventoActivo = await tx.reservaEquipo.count({
-    where: { equipoId: id, actividad: {
-      tipo: 'EVENTO', estado: { not: 'Cancelado' },
-      inicio: { lte: ahora }, fin: { gt: ahora },
-    } },
+  const enActividadVigente = await tx.reservaEquipo.count({
+    where: { equipoId: id, actividad: actividadVigente(ahora) },
   });
-  if (enEventoActivo) throw new ErrorEquipo(409, 'El equipo está asignado a un evento activo');
+  if (enActividadVigente) throw new ErrorEquipo(409, 'El equipo tiene unidades asignadas a una actividad vigente del calendario');
   const disponibles = stockDisponible(equipo);
   if (!Number.isInteger(data.cantidad) || data.cantidad < 1 || data.cantidad > disponibles) {
     throw new ErrorEquipo(409, `La cantidad averiada debe estar entre 1 y ${disponibles} unidades`);
