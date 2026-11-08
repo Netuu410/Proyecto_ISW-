@@ -93,7 +93,7 @@ export default function InventoryPage() {
       {alertas.length > 0 && (
         <section aria-label="Alertas de logística" className="p-4 bg-amber-50 rounded-xl space-y-2">
           <h2 className="font-bold">Historial de alertas de stock para logística</h2>
-          {alertas.map(alerta => <p key={alerta.id} className="text-sm">{alerta.mensaje}</p>)}
+          {alertas.map(alerta => <p key={alerta.id} className="text-sm whitespace-pre-line border-b border-amber-200 pb-2 last:border-0">{alerta.mensaje}</p>)}
         </section>
       )}
       {errorApi && (

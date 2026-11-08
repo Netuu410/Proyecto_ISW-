@@ -10,7 +10,7 @@ const descripcion = 'El parlante no enciende';
 const base = { id: 1, nombre: 'Parlante', estado: 'Disponible', stock: 5,
   stockAveriado: 0, precio: 100, costoInterno: 20 };
 
-function simular({ equipo = base, activas = 0, actividades, fallaAlerta = false, fallaReparacion = false } = {}) {
+function simular({ equipo = base, activas = 0, actividades, futuras = [], fallaAlerta = false, fallaReparacion = false } = {}) {
   let estado = { equipo: equipo && { ...equipo }, reportes: [], alertas: [], reparaciones: [] };
   return {
     leer: () => estado,
@@ -44,6 +44,12 @@ function simular({ equipo = base, activas = 0, actividades, fallaAlerta = false,
               actividad.inicio <= where.actividad.inicio.lte &&
               actividad.fin > where.actividad.fin.gt
             ).length;
+          },
+          findMany: async ({ where }) => {
+            assert.equal(where.equipoId, 1);
+            assert.equal(where.actividad.estado.not, 'Cancelado');
+            assert.ok(where.actividad.inicio.gt instanceof Date);
+            return futuras;
           } },
           reparacionEquipo: { create: async ({ data }) => {
             if (fallaReparacion) throw new Error('Fallo al guardar reparación');
@@ -84,6 +90,22 @@ test('avería parcial conserva total y deja cuatro unidades operativas', async (
   assert.equal(resultado.equipo.estado, 'Disponible');
   assert.equal(resultado.reporte.cantidad, 1);
   assert.match(db.leer().alertas[0].mensaje, /Quedan 4 operativas/);
+});
+
+test('guarda alerta con reserva futura afectada sin cancelar ni modificarla', async () => {
+  const futuras = [{ cantidad: 5, actividad: {
+    id: 20, nombre: 'Evento de prueba', inicio: new Date('2090-01-01T15:00:00Z'),
+    fin: new Date('2090-01-01T16:00:00Z'),
+  } }];
+  const original = structuredClone(futuras);
+  const db = simular({ futuras });
+  await reportarAveriaService(1, { descripcion, cantidad: 2 }, db);
+  const mensaje = db.leer().alertas[0].mensaje;
+  assert.match(mensaje, /#20 Evento de prueba/);
+  assert.match(mensaje, /Faltan hasta 2 unidad/);
+  assert.match(mensaje, /hora de Chile continental/);
+  assert.deepEqual(futuras, original);
+  assert.equal(db.leer().equipo.stockAveriado, 2);
 });
 
 test('reportes sucesivos acumulan daño y solo el último bloquea todo el registro', async () => {
