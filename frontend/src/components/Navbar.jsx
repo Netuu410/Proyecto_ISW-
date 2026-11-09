@@ -1,8 +1,20 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
+import { useAuth } from '../context/auth-context.js';
 
 export default function Navbar() {
   const location = useLocation();
+  const { usuario, salir } = useAuth();
+  const [saliendo, setSaliendo] = useState(false);
+  const [error, setError] = useState('');
+
+  async function cerrar() {
+    setSaliendo(true);
+    setError('');
+    try { await salir(); }
+    catch (err) { setError(err.message); }
+    finally { setSaliendo(false); }
+  }
 
   const isActive = (path) => location.pathname === path;
 
@@ -17,7 +29,7 @@ export default function Navbar() {
           NES <span className="text-gray-800">EVENTOS</span>
         </Link>
 
-        <div className="flex flex-wrap gap-4">
+        {usuario ? <div className="flex flex-wrap items-center gap-2">
           <Link
             to="/"
             className={`px-4 py-2 rounded-xl text-sm font-bold transition-all ${
@@ -30,7 +42,7 @@ export default function Navbar() {
           </Link>
           
           <Link
-            to="/Calendario"
+            to="/calendario"
             className={`px-4 py-2 rounded-xl text-sm font-bold transition-all ${
               isActive('/calendario')
                 ? 'bg-indigo-50 text-indigo-600'
@@ -73,7 +85,12 @@ export default function Navbar() {
             Colaboradores
           </Link>
 
-        </div>
+          <span className="px-2 text-sm text-slate-600">{usuario.nombre}</span>
+          <button onClick={cerrar} disabled={saliendo} className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-bold text-slate-700 hover:bg-slate-50 disabled:opacity-60">
+            {saliendo ? 'Saliendo…' : 'Cerrar sesión'}
+          </button>
+          {error && <p role="alert" className="w-full text-right text-sm text-red-700">{error}</p>}
+        </div> : <Link to="/login" className="text-sm font-bold text-indigo-600">Iniciar sesión</Link>}
       </div>
     </nav>
   );

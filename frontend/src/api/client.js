@@ -3,15 +3,15 @@ export function normalizarBase(base = '') {
   return limpia ? (/\/api$/.test(limpia) ? limpia : `${limpia}/api`) : '/api';
 }
 
-export function crearCliente({ base = '', fetchImpl = (...args) => fetch(...args) } = {}) {
+export function crearCliente({ base = '', fetchImpl = (...args) => fetch(...args), onUnauthorized } = {}) {
   const destino = normalizarBase(base);
   return async function solicitar(ruta, { method = 'GET', body, signal, headers, ...opciones } = {}) {
     const esFormulario = typeof FormData !== 'undefined' && body instanceof FormData;
     let respuesta;
     try {
       respuesta = await fetchImpl(`${destino}/${ruta.replace(/^\/+/, '')}`, {
-        ...opciones, method, signal,
-        headers: { Accept: 'application/json', ...(body !== undefined && !esFormulario ? { 'Content-Type': 'application/json' } : {}), ...headers, },
+        ...opciones, method, signal, credentials: 'include',
+        headers: { Accept: 'application/json', 'X-Requested-With': 'NES-Eventos', ...(body !== undefined && !esFormulario ? { 'Content-Type': 'application/json' } : {}), ...headers, },
         ...(body !== undefined ? { body: esFormulario ? body : JSON.stringify(body) } : {}),
       });
     } catch (error) {
@@ -36,13 +36,19 @@ export function crearCliente({ base = '', fetchImpl = (...args) => fetch(...args
     if (!respuesta.ok) {
       const detalles = datos?.detalles || [];
       const errores = datos?.errores || [];
-      const mensajeValidacion = [...detalles, ...errores].map(item => item.message).filter(Boolean).join('\n');
+      const mensajeValidacion = [...detalles, ...errores].map(item => item.message || item.mensaje).filter(Boolean).join('\n');
       const error = new Error(mensajeValidacion || datos?.mensaje || datos?.error || `Error HTTP ${respuesta.status}`);
       Object.assign(error, { status: respuesta.status, datos, detalles, errores, conflictos: datos?.conflictos || [] });
+      if (respuesta.status === 401 && !/^\/?auth\//.test(ruta)) onUnauthorized?.();
       throw error;
     }
     return datos;
   };
 }
 
-export const solicitar = crearCliente({ base: import.meta.env?.VITE_API_URL || '' });
+export const solicitar = crearCliente({
+  base: import.meta.env?.VITE_API_URL || '',
+  onUnauthorized: () => {
+    if (typeof window !== 'undefined') window.dispatchEvent(new Event('nes:sesion-expirada'));
+  },
+});

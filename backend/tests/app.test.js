@@ -3,15 +3,21 @@ import assert from 'node:assert/strict';
 import { once } from 'node:events';
 import { crearApp } from '../src/app.js';
 
+const cookie = `nes_sesion=${'a'.repeat(64)}`;
+const dbAuth = { sesionUsuario: { findUnique: async () => ({
+  expiresAt: new Date(Date.now() + 60000),
+  usuario: { id: 1, nombre: 'Prueba', email: 'prueba@example.com', rol: 'Gestor_Eventos', activo: true },
+}) } };
+
 test('Express sirve el build y las rutas React, separando errores API y archivos', async (t) => {
   // Usa el build local real. No consulta ni escribe PostgreSQL.
-  const server = crearApp({ servirFrontend: true }).listen(0, '127.0.0.1');
+  const server = crearApp({ servirFrontend: true, dbAuth }).listen(0, '127.0.0.1');
   t.after(() => new Promise((resolve, reject) => server.close(error => error ? reject(error) : resolve())));
   await once(server, 'listening');
   const base = `http://127.0.0.1:${server.address().port}`;
   let html;
   for (const ruta of ['/', '/inventario', '/cotizaciones', '/colaboradores', '/calendario']) {
-    const res = await fetch(base + ruta, { headers: { Accept: 'text/html' } });
+    const res = await fetch(base + ruta, { headers: { Accept: 'text/html', Cookie: cookie } });
     assert.equal(res.status, 200, ruta);
     assert.match(res.headers.get('content-type'), /text\/html/);
     const body = await res.text();
@@ -24,14 +30,14 @@ test('Express sirve el build y las rutas React, separando errores API y archivos
   assert.equal(js.status, 200); assert.match(js.headers.get('content-type'), /javascript/);
   await js.text();
   for (const ruta of ['/api', '/api/no-existe', '/api/catalogo/no-existe', '/assets/no-existe.js', '/.env']) {
-    const res = await fetch(base + ruta, { headers: { Accept: 'text/html' } });
+    const res = await fetch(base + ruta, { headers: { Accept: 'text/html', Cookie: cookie } });
     assert.equal(res.status, 404, ruta);
     assert.match(res.headers.get('content-type'), /application\/json/);
     await res.json();
   }
   // Recorre ruta y controlador reales; la validación evita llegar a Prisma.
   const invalida = await fetch(base + '/api/cotizaciones', {
-    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ clienteId: 1, items: [] }),
+    method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'NES-Eventos', Cookie: cookie }, body: JSON.stringify({ clienteId: 1, items: [] }),
   });
   assert.equal(invalida.status, 400); assert.ok(Array.isArray((await invalida.json()).detalles));
 });

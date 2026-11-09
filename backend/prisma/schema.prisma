@@ -186,3 +186,33 @@ model ReservaEquipo {
   @@unique([actividadId, equipoId])
   @@index([equipoId])
 }
+
+enum RolUsuario {
+  Administrador
+  Gestor_Eventos
+  Encargado_Inventario
+}
+
+model Usuario {
+  id           Int             @id @default(autoincrement())
+  nombre       String
+  email        String          @unique
+  passwordHash String
+  rol          RolUsuario      @default(Gestor_Eventos)
+  activo       Boolean         @default(true)
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+  sesiones     SesionUsuario[]
+}
+
+model SesionUsuario {
+  // Se guarda el SHA-256 del token; el token original solo viaja en la cookie.
+  id        String   @id
+  usuarioId Int
+  usuario   Usuario  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  expiresAt DateTime
+
+  @@index([usuarioId])
+  @@index([expiresAt])
+}
