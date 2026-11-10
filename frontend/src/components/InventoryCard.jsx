@@ -1,15 +1,21 @@
-import { reportarAveriaEquipo } from '../api/equipos.js';
+import { reportarAveriaEquipo, registrarReparacionEquipo } from '../api/equipos.js';
 import React, { useState, useEffect, useCallback } from 'react';
 
-export default function InventoryCard({ item, onEquipoActualizado }) {
+export default function InventoryCard({ item, onEquipoActualizado, puedeGestionar = false }) {
   const [showModal, setShowModal] = useState(false);
   const [descripcion, setDescripcion] = useState('');
+  const [cantidad, setCantidad] = useState(1);
+  const [cantidadReparada, setCantidadReparada] = useState(1);
+  const [notaReparacion, setNotaReparacion] = useState('');
   const [error, setError] = useState('');
   const [guardando, setGuardando] = useState(false);
 
   const cerrarModal = useCallback(() => {
     setShowModal(false);
     setDescripcion('');
+    setCantidad(1);
+    setCantidadReparada(1);
+    setNotaReparacion('');
     setError('');
   }, []);
 
@@ -33,11 +39,26 @@ export default function InventoryCard({ item, onEquipoActualizado }) {
     setGuardando(true);
     setError('');
     try {
-      const data = await reportarAveriaEquipo(item.id, { descripcion });
+      const data = await reportarAveriaEquipo(item.id, { descripcion, cantidad: Number(cantidad) });
       // Avisa a la página para mostrar el equipo confirmado por el backend.
       onEquipoActualizado(data.equipo);
       setDescripcion('');
+      setCantidad(1);
       setShowModal(false);
+    } catch (err) { setError(err.message); }
+    finally { setGuardando(false); }
+  };
+
+  const registrarReparacion = async (event) => {
+    event.preventDefault();
+    setGuardando(true);
+    setError('');
+    try {
+      const data = await registrarReparacionEquipo(item.id, {
+        cantidad: Number(cantidadReparada), descripcion: notaReparacion,
+      });
+      onEquipoActualizado(data.equipo);
+      cerrarModal();
     } catch (err) { setError(err.message); }
     finally { setGuardando(false); }
   };
@@ -48,6 +69,11 @@ export default function InventoryCard({ item, onEquipoActualizado }) {
     'En Uso': 'bg-amber-100 text-amber-800 border-amber-300',
     Mantenimiento: 'bg-rose-100 text-rose-800 border-rose-300',
   };
+  const situaciones = [
+    { nombre: 'Disponible', cantidad: item.unidadesDisponiblesAhora, texto: 'disponibles' },
+    { nombre: 'En Uso', cantidad: item.unidadesEnUso, texto: 'en uso' },
+    { nombre: 'Mantenimiento', cantidad: item.stockAveriado, texto: 'en mantenimiento' },
+  ].filter(situacion => situacion.cantidad > 0);
 
   return (
     <>
@@ -64,9 +90,12 @@ export default function InventoryCard({ item, onEquipoActualizado }) {
               alt={item.nombre}
               className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
             />
-            <span className={`absolute top-3 right-3 text-xs font-semibold px-3 py-1 rounded-full border shadow-sm ${statusStyles[item.estado] || 'bg-gray-100 text-gray-800'}`}>
-              {item.estado}
-            </span>
+            <div className="absolute top-3 right-3 flex flex-col items-end gap-1">
+              {situaciones.map(situacion => <span key={situacion.nombre}
+                className={`text-xs font-semibold px-3 py-1 rounded-full border shadow-sm ${statusStyles[situacion.nombre]}`}>
+                {situacion.cantidad} {situacion.texto}
+              </span>)}
+            </div>
           </div>
 
           {/* Información del Producto */}
@@ -77,6 +106,9 @@ export default function InventoryCard({ item, onEquipoActualizado }) {
             <h3 className="text-lg font-bold text-gray-800 group-hover:text-indigo-600 transition-colors line-clamp-1">
               {item.nombre}
             </h3>
+            <p className="text-sm text-gray-600 mt-2">
+              {item.stock} unidades totales
+            </p>
           </div>
         </div>
 
@@ -122,9 +154,12 @@ export default function InventoryCard({ item, onEquipoActualizado }) {
                   <span className="text-xs font-bold text-indigo-600 uppercase tracking-wider">{item.categoria}</span>
                   <h2 className="text-2xl font-bold text-gray-900">{item.nombre}</h2>
                 </div>
-                <span className={`text-xs font-semibold px-3 py-1 rounded-full border ${statusStyles[item.estado]}`}>
-                  {item.estado}
-                </span>
+                <div className="flex flex-col items-end gap-1">
+                  {situaciones.map(situacion => <span key={situacion.nombre}
+                    className={`text-xs font-semibold px-3 py-1 rounded-full border ${statusStyles[situacion.nombre]}`}>
+                    {situacion.cantidad} {situacion.texto}
+                  </span>)}
+                </div>
               </div>
 
               <p className="text-gray-600 text-sm leading-relaxed">
@@ -133,8 +168,10 @@ export default function InventoryCard({ item, onEquipoActualizado }) {
 
               <div className="grid grid-cols-2 gap-4 pt-4 border-t border-gray-100">
                 <div className="bg-gray-50 p-3 rounded-xl border border-gray-100">
-                  <span className="text-xs text-gray-400 block font-medium">Stock disponible</span>
-                  <span className="text-base font-bold text-gray-800">{item.estado === 'Disponible' ? item.stock : 0} unidades</span>
+                  <span className="text-xs text-gray-400 block font-medium">Disponibles ahora</span>
+                  <span className="text-base font-bold text-gray-800">{item.unidadesDisponiblesAhora} unidades</span>
+                  <span className="text-xs text-gray-500 block">En uso: {item.unidadesEnUso}</span>
+                  <span className="text-xs text-gray-500 block">Total: {item.stock} · En mantenimiento: {item.stockAveriado}</span>
                 </div>
                 <div className="bg-gray-50 p-3 rounded-xl border border-gray-100">
                   <span className="text-xs text-gray-400 block font-medium">Precio de arriendo</span>
@@ -143,18 +180,43 @@ export default function InventoryCard({ item, onEquipoActualizado }) {
               </div>
 
               <p className="text-sm text-gray-600">Origen: {item.origen}</p>
-              {item.estado === 'Disponible' ? (
+              {error && <p role="alert" className="text-sm text-red-700">{error}</p>}
+              {puedeGestionar && item.stockAveriado > 0 && ['Disponible', 'Mantenimiento'].includes(item.estado) && (
+                <form onSubmit={registrarReparacion} className="space-y-2 bg-emerald-50 border border-emerald-200 rounded-xl p-4">
+                  <h3 className="font-bold text-emerald-900">Sacar de mantenimiento</h3>
+                  <p className="text-sm text-gray-600">Registra las unidades reparadas y listas para volver a utilizarse.</p>
+                  <label htmlFor={`reparadas-${item.id}`} className="block text-sm font-semibold">Unidades reparadas</label>
+                  <input id={`reparadas-${item.id}`} type="number" min="1" max={item.stockAveriado}
+                    step="1" required value={cantidadReparada} disabled={guardando}
+                    onChange={e => setCantidadReparada(e.target.value)} className="w-full border rounded-lg p-2" />
+                  <label htmlFor={`nota-reparacion-${item.id}`} className="block text-sm font-semibold">Detalle de la reparación (opcional)</label>
+                  <textarea id={`nota-reparacion-${item.id}`} value={notaReparacion} maxLength={2000}
+                    disabled={guardando} onChange={e => setNotaReparacion(e.target.value)}
+                    className="w-full border rounded-lg p-2" />
+                  <button type="submit" disabled={guardando}
+                    className="bg-emerald-700 hover:bg-emerald-800 text-white rounded-lg px-4 py-2 disabled:opacity-50">
+                    {guardando ? 'Guardando…' : 'Devolver a disponibles'}
+                  </button>
+                </form>
+              )}
+              {puedeGestionar && item.estado === 'Disponible' && item.unidadesEnUso === 0 ? (
                 <form onSubmit={reportarAveria} className="space-y-2">
+                  <label htmlFor={`cantidad-averia-${item.id}`} className="block text-sm font-semibold">Unidades averiadas</label>
+                  <input id={`cantidad-averia-${item.id}`} type="number" required min="1"
+                    max={item.stockDisponible} step="1" value={cantidad}
+                    onChange={e => setCantidad(e.target.value)} disabled={guardando}
+                    className="w-full border rounded-lg p-2" />
                   <label htmlFor={`averia-${item.id}`} className="block text-sm font-semibold">Descripción de la avería</label>
                   <textarea id={`averia-${item.id}`} value={descripcion} onChange={e => setDescripcion(e.target.value)}
                     required minLength={10} maxLength={2000} className="w-full border rounded-lg p-2" />
-                  <p className="text-xs text-gray-500">El reporte enviará todo este registro de inventario a mantenimiento.</p>
-                  {error && <p role="alert" className="text-sm text-red-700">{error}</p>}
+                  <p className="text-xs text-gray-500">Solo las unidades indicadas pasarán a mantenimiento. Las demás seguirán operativas.</p>
                   <button disabled={guardando} className="bg-rose-700 text-white rounded-lg px-4 py-2 disabled:opacity-50">
                     {guardando ? 'Guardando…' : 'Reportar avería'}
                   </button>
                 </form>
-              ) : <p className="text-sm text-rose-700">No se puede reportar una avería mientras el equipo está {item.estado?.toLowerCase()}.</p>}
+              ) : puedeGestionar ? <p className="text-sm text-rose-700">{item.unidadesEnUso > 0
+                ? 'Hay unidades en uso. Registra la avería al finalizar la actividad del calendario.'
+                : 'No se puede reportar una avería con el estado actual del equipo.'}</p> : null}
               <div className="pt-2 flex justify-end">
                 <button
                   type="button"

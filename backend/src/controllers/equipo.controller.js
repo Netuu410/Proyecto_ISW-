@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { crearEquipoService, obtenerEquiposService, reportarAveriaService,
-  obtenerAlertasService, ErrorEquipo } from '../services/equipo.service.js';
-import { equipoSchema, equipoIdSchema, averiaSchema } from '../validations/equipo.schema.js';
+  obtenerAlertasService, registrarReparacionService, ErrorEquipo } from '../services/equipo.service.js';
+import { equipoSchema, equipoIdSchema, averiaSchema, reparacionSchema } from '../validations/equipo.schema.js';
 
 // Traduce errores de validación, de negocio o internos a respuestas HTTP.
 const responderError = (res, error) => {
@@ -31,4 +31,12 @@ export const reportarAveria = async (req, res) => {
 export const obtenerAlertas = async (req, res) => {
   try { res.json(await obtenerAlertasService()); }
   catch (error) { responderError(res, error); }
+};
+
+export const registrarReparacion = async (req, res) => {
+  try {
+    const id = equipoIdSchema.parse(req.params.id);
+    const data = reparacionSchema.parse(req.body);
+    res.status(201).json(await registrarReparacionService(id, data));
+  } catch (error) { responderError(res, error); }
 };

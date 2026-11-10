@@ -36,8 +36,10 @@ function Contenido() {
             <Route element={<RutaPrivada />}>
               <Route path="/" element={<HomePage />} />
               <Route path="/inventario" element={<InventoryPage />} />
-              <Route path="/cotizaciones" element={<CotizacionesPage />} />
               <Route path="/colaboradores" element={<ColaboradoresPage />} />
+            </Route>
+            <Route element={<RutaPrivada roles={['Administrador', 'Gestor_Eventos']} />}>
+              <Route path="/cotizaciones" element={<CotizacionesPage />} />
               <Route path="/calendario" element={<CalendarPage />} />
             </Route>
             <Route path="*" element={<Navigate to="/" replace />} />

@@ -5,6 +5,7 @@ import { useAuth } from '../context/auth-context.js';
 export default function Navbar() {
   const location = useLocation();
   const { usuario, salir } = useAuth();
+  const esGestor = ['Administrador', 'Gestor_Eventos'].includes(usuario?.rol);
   const [saliendo, setSaliendo] = useState(false);
   const [error, setError] = useState('');
 
@@ -41,7 +42,7 @@ export default function Navbar() {
             Inicio
           </Link>
           
-          <Link
+          {esGestor && <Link
             to="/calendario"
             className={`px-4 py-2 rounded-xl text-sm font-bold transition-all ${
               isActive('/calendario')
@@ -50,7 +51,7 @@ export default function Navbar() {
             }`}
           >
             Calendario
-          </Link>
+          </Link>}
 
           <Link
             to="/inventario"
@@ -63,7 +64,7 @@ export default function Navbar() {
             Inventario
           </Link>
 
-          <Link
+          {esGestor && <Link
             to="/cotizaciones"
             className={`px-4 py-2 rounded-xl text-sm font-bold transition-all ${
               isActive('/cotizaciones')
@@ -72,7 +73,7 @@ export default function Navbar() {
             }`}
           >
             Cotizaciones
-          </Link>
+          </Link>}
 
           <Link
             to="/colaboradores"
@@ -85,7 +86,7 @@ export default function Navbar() {
             Colaboradores
           </Link>
 
-          <span className="px-2 text-sm text-slate-600">{usuario.nombre}</span>
+          <span className="px-2 text-sm text-slate-600">{usuario.nombre} · {usuario.rol.replaceAll('_', ' ')}</span>
           <button onClick={cerrar} disabled={saliendo} className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-bold text-slate-700 hover:bg-slate-50 disabled:opacity-60">
             {saliendo ? 'Saliendo…' : 'Cerrar sesión'}
           </button>

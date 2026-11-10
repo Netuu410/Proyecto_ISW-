@@ -41,9 +41,19 @@ SHA-256 del token aleatorio, no el token original. Un nuevo login revoca la
 sesión que presente ese navegador; logout la elimina de la base de datos.
 Las sesiones vencidas y las cuentas inactivas no pueden acceder a la API.
 
-Los módulos de inventario, catálogo, cotizaciones, evaluaciones, colaboradores
-y agenda exigen una cuenta activa. Los roles se guardan y devuelven, pero esta
-implementación no diferencia permisos entre módulos por rol.
+Los módulos exigen una cuenta activa y aplican permisos también en el servidor:
+
+| Rol | Permisos |
+| --- | --- |
+| `Administrador` | Acceso completo a todos los módulos y operaciones. |
+| `Gestor_Eventos` | Gestionar agenda, cotizaciones y evaluaciones; consultar inventario, catálogo y colaboradores. |
+| `Encargado_Inventario` | Consultar inventario y catálogo; crear equipos, registrar averías/reparaciones y consultar alertas de inventario. |
+
+La interfaz oculta las secciones y acciones no disponibles para el rol. Las
+rutas directas de API responden 403 si el usuario autenticado no tiene permiso.
+El registro público asigna `Gestor_Eventos`; no acepta un rol enviado por el
+cliente. La asignación de Administrador o Encargado_Inventario debe realizarse
+por un operador de confianza directamente en la base de datos.
 
 El límite de registro/login es de 30 peticiones cada 15 minutos por IP y proceso.
 Para un despliegue con varias instancias se necesita un limitador compartido.

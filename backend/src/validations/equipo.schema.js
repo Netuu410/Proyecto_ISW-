@@ -21,5 +21,11 @@ export const equipoIdSchema = z.string().regex(/^[1-9]\d*$/, 'ID inválido')
   .transform(Number).pipe(z.number().int().max(2147483647));
 
 export const averiaSchema = z.object({
+  cantidad: z.number().int().min(1, 'Indica al menos una unidad averiada').max(2147483647),
   descripcion: z.string().trim().min(10, 'Describe la avería con al menos 10 caracteres').max(2000),
+}).strict();
+
+export const reparacionSchema = z.object({
+  cantidad: z.number().int().min(1, 'Indica al menos una unidad reparada').max(2147483647),
+  descripcion: z.string().trim().max(2000).optional(),
 }).strict();

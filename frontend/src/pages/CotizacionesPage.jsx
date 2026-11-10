@@ -35,8 +35,8 @@ export default function CotizacionesPage() {
     try {
       for (const item of items) {
         const producto = productos.find(p => p.id === Number(item.equipoId));
-        if (producto && Number(item.cantidad) > producto.stock) {
-          throw new Error(`${producto.nombre}: solicitas ${item.cantidad} unidades, pero el stock del inventario es ${producto.stock}`);
+        if (producto && Number(item.cantidad) > producto.stockDisponible) {
+          throw new Error(`${producto.nombre}: solicitas ${item.cantidad} unidades, pero el stock del inventario es ${producto.stockDisponible}`);
         }
       }
       const cotizacion = await crearCotizacion({ clienteNombre: cliente, items: items.map(item => ({ equipoId: Number(item.equipoId), cantidad: Number(item.cantidad) })) });
@@ -59,10 +59,10 @@ export default function CotizacionesPage() {
           <div className="agenda-campos"><label>Cliente o empresa<input required maxLength={160} value={cliente} onChange={e => setCliente(e.target.value)} /></label></div>
           {items.map((item, indice) => <div className="agenda-linea-producto" key={indice}>
             <label>Producto del inventario<select required value={item.equipoId} onChange={e => cambiar(indice, 'equipoId', e.target.value)}>
-              <option value="">Selecciona un producto</option>{productos.map(p => <option key={p.id} value={p.id} disabled={!(p.precio > 0) || p.stock < 1 || items.some((otro, i) => i !== indice && Number(otro.equipoId) === p.id)}>{p.nombre} · {moneda(p.precio)} · stock {p.stock} · {p.estado || 'Sin estado'}</option>)}
+              <option value="">Selecciona un producto</option>{productos.map(p => <option key={p.id} value={p.id} disabled={!(p.precio > 0) || p.stockDisponible < 1 || items.some((otro, i) => i !== indice && Number(otro.equipoId) === p.id)}>{p.nombre} · {moneda(p.precio)} · stock {p.stockDisponible} · {p.estado || 'Sin estado'}</option>)}
             </select></label>
-            <label>Cantidad<input required type="number" min="1" max={productos.find(p => p.id === Number(item.equipoId))?.stock ?? 2147483647} step="1" value={item.cantidad} onChange={e => cambiar(indice, 'cantidad', e.target.value)} /></label>
-            {Number(item.cantidad) > (productos.find(p => p.id === Number(item.equipoId))?.stock ?? Infinity) && <p role="alert" className="agenda-error">La cantidad supera el stock del producto seleccionado.</p>}
+            <label>Cantidad<input required type="number" min="1" max={productos.find(p => p.id === Number(item.equipoId))?.stockDisponible ?? 2147483647} step="1" value={item.cantidad} onChange={e => cambiar(indice, 'cantidad', e.target.value)} /></label>
+            {Number(item.cantidad) > (productos.find(p => p.id === Number(item.equipoId))?.stockDisponible ?? Infinity) && <p role="alert" className="agenda-error">La cantidad supera el stock del producto seleccionado.</p>}
             <button type="button" disabled={items.length === 1} onClick={() => setItems(actual => actual.filter((_, i) => i !== indice))}>Quitar</button>
           </div>)}
           {!cargando && !productos.length && <p>Crea un producto en Inventario para comenzar.</p>}

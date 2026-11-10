@@ -1,0 +1,7 @@
+CREATE TABLE "ReparacionEquipo" (
+  "id" SERIAL PRIMARY KEY,
+  "equipoId" INTEGER NOT NULL REFERENCES "Equipo"("id") ON DELETE RESTRICT ON UPDATE CASCADE,
+  "cantidad" INTEGER NOT NULL CHECK ("cantidad" > 0),
+  "descripcion" TEXT,
+  "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+);

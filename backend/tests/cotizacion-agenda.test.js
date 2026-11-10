@@ -22,7 +22,7 @@ test('agrupa equipos de varios productos, conserva mínimos cotizados y admite s
 });
 
 test('la cotización conserva nombre y precio aunque cambie el inventario', async () => {
-  const producto = { id: 1, nombre: 'Parlante', precio: 100, costoInterno: 20, stock: 5 };
+  const producto = { id: 1, nombre: 'Parlante', estado: 'Disponible', precio: 100, costoInterno: 20, stock: 5 };
   const resultado = await guardarCotizacion({ clienteNombre: 'Empresa', items: [{ equipoId: 1, cantidad: 2 }] }, {
     equipo: { findUnique: async () => producto },
     cotizacion: { create: async ({ data }) => ({ ...data, items: data.items.create }) },

@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import { autorizarRoles } from '../middleware/auth.middleware.js';
 import multer from 'multer';
 import { listarActividades, obtenerActividad, comprobarDisponibilidad,
   crearActividad, listarRecintos, crearRecinto, cancelarActividad } from '../controllers/agenda.controller.js';
@@ -37,13 +38,13 @@ const upload = multer({
     aceptar(null, true);}
   });
 
-router.get('/recintos', listarRecintos);
-router.post('/recintos', crearRecinto);
-router.post('/disponibilidad', comprobarDisponibilidad);
-router.get('/actividades', listarActividades);
-router.get('/actividades/:id', obtenerActividad);
-router.post('/actividades', crearActividad);
-router.patch('/actividades/:id/cancelar', (req, res, next) => {
+router.get('/recintos', autorizarRoles('Administrador', 'Gestor_Eventos'), listarRecintos);
+router.post('/recintos', autorizarRoles('Administrador', 'Gestor_Eventos'), crearRecinto);
+router.post('/disponibilidad', autorizarRoles('Administrador', 'Gestor_Eventos'), comprobarDisponibilidad);
+router.get('/actividades', autorizarRoles('Administrador', 'Gestor_Eventos'), listarActividades);
+router.get('/actividades/:id', autorizarRoles('Administrador', 'Gestor_Eventos'), obtenerActividad);
+router.post('/actividades', autorizarRoles('Administrador', 'Gestor_Eventos'), crearActividad);
+router.patch('/actividades/:id/cancelar', autorizarRoles('Administrador', 'Gestor_Eventos'), (req, res, next) => {
   upload.single('comprobante')(req, res, error => {
     if (error) {
       const mensajes = {

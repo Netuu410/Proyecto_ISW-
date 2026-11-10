@@ -37,6 +37,15 @@ export function exigirSesion(db) {
     };
 }
 
+export function autorizarRoles(...rolesPermitidos) {
+    return (req, res, next) => {
+        if (!req.usuario || !rolesPermitidos.includes(req.usuario.rol)) {
+            return res.status(403).json({ mensaje: 'No tienes permisos para realizar esta acción' });
+        }
+        next();
+    };
+}
+
 // Un formulario de otro sitio no puede enviar este encabezado sin un preflight CORS.
 export function protegerSolicitudes(req, res, next) {
     if (!['GET', 'HEAD', 'OPTIONS'].includes(req.method)
