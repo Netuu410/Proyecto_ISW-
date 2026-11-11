@@ -15,6 +15,8 @@ test('éxito, JSON, encabezados y signal', async () => {
     assert.equal(opciones.method, 'POST');
     assert.equal(opciones.headers['Content-Type'], 'application/json');
     assert.equal(opciones.headers.Accept, 'application/json');
+    assert.equal(opciones.credentials, 'include');
+    assert.equal(opciones.headers['X-Requested-With'], 'NES-Eventos');
     assert.equal(opciones.signal, controller.signal);
     assert.deepEqual(JSON.parse(opciones.body), { nombre: 'Audio' });
     return Response.json({ id: 3 }, { status: 201 });
@@ -60,4 +62,20 @@ test('respuesta no JSON y error HTTP vacío son visibles', async () => {
   await assert.rejects(html('/catalogo'), error => error.status === 502 && /JSON/.test(error.message));
   const vacia = crearCliente({ fetchImpl: async () => new Response(null, { status: 503 }) });
   await assert.rejects(vacia('/catalogo'), error => error.status === 503);
+});
+
+test('muestra mensajes de validación del registro y avisa si vence una sesión', async () => {
+  let expiraciones = 0;
+  const api = crearCliente({
+    fetchImpl: async () => Response.json({ errores: [{ campo: 'email', mensaje: 'Correo inválido' }] }, { status: 400 }),
+  });
+  await assert.rejects(api('/auth/registro'), error => error.message === 'Correo inválido');
+  const sinSesion = crearCliente({
+    fetchImpl: async () => Response.json({ mensaje: 'Inicia sesión' }, { status: 401 }),
+    onUnauthorized: () => { expiraciones++; },
+  });
+  await assert.rejects(sinSesion('/equipos'));
+  assert.equal(expiraciones, 1);
+  await assert.rejects(sinSesion('/auth/login'));
+  assert.equal(expiraciones, 1);
 });

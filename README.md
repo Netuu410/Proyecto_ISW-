@@ -1,5 +1,9 @@
 # NES Eventos: ejecución local
 
+La aplicación incluye registro e inicio de sesión en `/registro` y `/login`.
+Los módulos requieren una sesión activa. Ver el flujo, endpoints y pruebas en
+[backend/AUTH.md](backend/AUTH.md).
+
 La aplicación utiliza PostgreSQL del `docker-compose.yml`, idéntico al de `origin/main`. Backend y frontend se ejecutan en Windows; PostgreSQL se ejecuta en Docker.
 
 | Componente | Dirección |
