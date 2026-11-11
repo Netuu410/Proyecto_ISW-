@@ -21,3 +21,14 @@ test('sin resultados devuelve listas y totales vacíos', () => {
   assert.deepEqual(filtrarInventario([equipos[2]], 'enUso'), []);
   assert.deepEqual(resumirInventario([]), { todos: 0, disponibles: 0, enUso: 0, mantenimiento: 0 });
 });
+
+test('combina nombre sin tildes ni mayúsculas, categoría y disponibilidad', () => {
+  const registros = [
+    { ...equipos[0], nombre: 'Micrófono inalámbrico', categoria: 'Audio' },
+    { ...equipos[1], nombre: 'Micrófono de cable', categoria: 'Audio' },
+    { ...equipos[2], nombre: 'Luz LED', categoria: 'Iluminación' },
+  ];
+  assert.deepEqual(filtrarInventario(registros, 'disponibles', ' MICROFONO ', 'Audio').map(e => e.id), [1]);
+  assert.equal(filtrarInventario(registros, 'todos', 'microfono', 'Iluminación').length, 0);
+  assert.deepEqual(filtrarInventario(registros, 'todos', '', '').map(e => e.id), [1, 2, 3]);
+});

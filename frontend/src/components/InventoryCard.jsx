@@ -3,6 +3,15 @@ import React, { useState, useEffect, useCallback } from 'react';
 
 export default function InventoryCard({ item, onEquipoActualizado }) {
   const [showModal, setShowModal] = useState(false);
+  const [accion, setAccion] = useState('detalle');
+  const [imagenFallida, setImagenFallida] = useState(false);
+  const puedeReportar = item.estado === 'Disponible' && item.unidadesEnUso === 0 && item.stockDisponible > 0;
+  const puedeReparar = item.stockAveriado > 0 && ['Disponible', 'Mantenimiento'].includes(item.estado);
+  const motivoBloqueo = item.unidadesEnUso > 0
+    ? 'Hay unidades en uso. La avería se puede registrar al finalizar la actividad.'
+    : 'No hay unidades operativas habilitadas para reportar una avería.';
+  const tituloModal = accion === 'averia' ? 'Reportar avería' : accion === 'reparacion' ? 'Registrar reparación' : 'Detalle del equipo';
+  const abrirModal = nuevaAccion => { setAccion(nuevaAccion); setError(''); setShowModal(true); };
   const [descripcion, setDescripcion] = useState('');
   const [cantidad, setCantidad] = useState(1);
   const [cantidadReparada, setCantidadReparada] = useState(1);
@@ -17,7 +26,7 @@ export default function InventoryCard({ item, onEquipoActualizado }) {
     setCantidadReparada(1);
     setNotaReparacion('');
     setError('');
-  }, []);
+  }, [setShowModal, setDescripcion, setCantidad, setCantidadReparada, setNotaReparacion, setError]);
 
   // Escucha Escape mientras el modal permite cerrar y retira la escucha al salir.
   useEffect(() => {
@@ -42,9 +51,7 @@ export default function InventoryCard({ item, onEquipoActualizado }) {
       const data = await reportarAveriaEquipo(item.id, { descripcion, cantidad: Number(cantidad) });
       // Avisa a la página para mostrar el equipo confirmado por el backend.
       onEquipoActualizado(data.equipo);
-      setDescripcion('');
-      setCantidad(1);
-      setShowModal(false);
+      cerrarModal();
     } catch (err) { setError(err.message); }
     finally { setGuardando(false); }
   };
@@ -73,80 +80,60 @@ export default function InventoryCard({ item, onEquipoActualizado }) {
     { nombre: 'Disponible', cantidad: item.unidadesDisponiblesAhora, texto: 'disponibles' },
     { nombre: 'En Uso', cantidad: item.unidadesEnUso, texto: 'en uso' },
     { nombre: 'Mantenimiento', cantidad: item.stockAveriado, texto: 'en mantenimiento' },
-  ].filter(situacion => situacion.cantidad > 0);
+  ];
 
   return (
     <>
-      {/* TARJETA DE INVENTARIO */}
-      <div
-        onClick={() => setShowModal(true)}
-        className="bg-white rounded-2xl shadow-sm hover:shadow-xl transition-all duration-300 border border-gray-100 overflow-hidden cursor-pointer flex flex-col justify-between group"
-      >
-        <div>
-          {/* Contenedor de Imagen + Badge */}
-          <div className="relative h-48 w-full bg-gray-100 overflow-hidden">
-            <img
-              src={item.imagenUrl || 'https://via.placeholder.com/400x300?text=Sin+Imagen'}
-              alt={item.nombre}
-              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-            />
-            <div className="absolute top-3 right-3 flex flex-col items-end gap-1">
-              {situaciones.map(situacion => <span key={situacion.nombre}
-                className={`text-xs font-semibold px-3 py-1 rounded-full border shadow-sm ${statusStyles[situacion.nombre]}`}>
-                {situacion.cantidad} {situacion.texto}
-              </span>)}
-            </div>
+      <article className="bg-white rounded-2xl shadow-sm border border-gray-200 p-5 flex flex-col gap-4">
+        <div className="flex items-center gap-4">
+          <div className="w-20 h-20 shrink-0 bg-gray-100 rounded-xl overflow-hidden flex items-center justify-center">
+            {item.imagenUrl && !imagenFallida ? <img src={item.imagenUrl} alt={item.nombre} onError={() => setImagenFallida(true)} className="w-full h-full object-contain" /> : <span className="text-xs text-gray-500 text-center">Sin imagen</span>}
           </div>
-
-          {/* Información del Producto */}
-          <div className="p-5">
-            <span className="text-xs font-bold text-indigo-600 uppercase tracking-wider block mb-1">
-              {item.categoria}
-            </span>
-            <h3 className="text-lg font-bold text-gray-800 group-hover:text-indigo-600 transition-colors line-clamp-1">
-              {item.nombre}
-            </h3>
-            <p className="text-sm text-gray-600 mt-2">
-              {item.stock} unidades totales
-            </p>
+          <div className="min-w-0">
+            <p className="text-xs font-bold text-indigo-600 uppercase">{item.categoria}</p>
+            <h3 className="text-lg font-bold text-gray-900 break-words">{item.nombre}</h3>
+            <p className="text-sm text-gray-500">{item.origen} · {item.stock} unidades totales</p>
           </div>
         </div>
-
-        {/* Footer con Tarifa y Acción */}
-        <div className="p-5 pt-0 flex items-center justify-between border-t border-gray-50 mt-2">
-          <div>
-            <span className="text-xs text-gray-400 block font-medium">Tarifa diaria</span>
-            <span className="text-lg font-black text-gray-900">
-              ${item.precio?.toLocaleString('es-CL')}
-            </span>
-          </div>
-          <span className="text-sm font-semibold text-indigo-600 group-hover:translate-x-1 transition-transform flex items-center gap-1">
-            Ver más &rarr;
-          </span>
+        <dl className="grid grid-cols-3 gap-2">
+          {situaciones.map(situacion => <div key={situacion.nombre} className={`rounded-xl border p-2 ${statusStyles[situacion.nombre]}`}>
+            <dt className="text-xs">{situacion.texto}</dt>
+            <dd className="text-2xl font-bold mt-1">{situacion.cantidad}</dd>
+          </div>)}
+        </dl>
+        <div className="flex flex-wrap justify-between items-center gap-2 text-sm">
+          <span className="text-gray-500">Tarifa: ${item.precio?.toLocaleString('es-CL')} /día</span>
+          <button type="button" onClick={() => abrirModal('detalle')} className="font-semibold text-indigo-700 py-2">Ver detalle</button>
         </div>
-      </div>
-
+        <div className="mt-auto border-t pt-3 flex flex-wrap gap-2">
+          <button type="button" disabled={!puedeReportar} onClick={() => abrirModal('averia')} className="text-sm font-semibold bg-rose-50 text-rose-800 border border-rose-200 rounded-lg px-3 py-2 disabled:opacity-50 disabled:cursor-not-allowed">Reportar avería</button>
+          {puedeReparar && <button type="button" onClick={() => abrirModal('reparacion')} className="text-sm font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200 rounded-lg px-3 py-2">Registrar reparación</button>}
+        </div>
+        {!puedeReportar && <p className="text-xs text-gray-500">{motivoBloqueo}</p>}
+      </article>
       {/* MODAL CON DETALLE COMPLETO */}
       {showModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-          <div role="dialog" aria-modal="true" aria-label="Detalle del equipo"
+          <div role="dialog" aria-modal="true" aria-label={tituloModal}
             className="bg-white rounded-2xl max-w-lg w-full max-h-[calc(100dvh-2rem)] flex flex-col overflow-hidden shadow-2xl transition-all">
             <div className="flex items-center justify-between px-5 py-3 border-b shrink-0">
-              <span className="font-semibold text-gray-800">Detalle del equipo</span>
+              <span className="font-semibold text-gray-800">{tituloModal}</span>
               <button type="button" onClick={cerrarModal} disabled={guardando}
+                autoFocus
                 aria-label="Cerrar detalle del equipo"
                 className="text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-full w-9 h-9 flex items-center justify-center font-bold disabled:opacity-50">
                 ✕
               </button>
             </div>
             <div className="min-h-0 overflow-y-auto">
-            <div className="relative h-64 bg-gray-100">
+            {accion === 'detalle' && item.imagenUrl && !imagenFallida && <div className="relative h-32 bg-gray-100">
               <img
                 src={item.imagenUrl || undefined}
                 alt={item.nombre}
-                className="w-full h-full object-cover"
+                onError={() => setImagenFallida(true)}
+                className="w-full h-full object-contain"
               />
-            </div>
+            </div>}
 
             <div className="p-6 space-y-4">
               <div className="flex justify-between items-start">
@@ -181,7 +168,7 @@ export default function InventoryCard({ item, onEquipoActualizado }) {
 
               <p className="text-sm text-gray-600">Origen: {item.origen}</p>
               {error && <p role="alert" className="text-sm text-red-700">{error}</p>}
-              {item.stockAveriado > 0 && ['Disponible', 'Mantenimiento'].includes(item.estado) && (
+              {accion === 'reparacion' && puedeReparar && (
                 <form onSubmit={registrarReparacion} className="space-y-2 bg-emerald-50 border border-emerald-200 rounded-xl p-4">
                   <h3 className="font-bold text-emerald-900">Sacar de mantenimiento</h3>
                   <p className="text-sm text-gray-600">Registra las unidades reparadas y listas para volver a utilizarse.</p>
@@ -199,7 +186,7 @@ export default function InventoryCard({ item, onEquipoActualizado }) {
                   </button>
                 </form>
               )}
-              {item.estado === 'Disponible' && item.unidadesEnUso === 0 ? (
+              {accion === 'averia' && (puedeReportar ? (
                 <form onSubmit={reportarAveria} className="space-y-2">
                   <label htmlFor={`cantidad-averia-${item.id}`} className="block text-sm font-semibold">Unidades averiadas</label>
                   <input id={`cantidad-averia-${item.id}`} type="number" required min="1"
@@ -208,15 +195,14 @@ export default function InventoryCard({ item, onEquipoActualizado }) {
                     className="w-full border rounded-lg p-2" />
                   <label htmlFor={`averia-${item.id}`} className="block text-sm font-semibold">Descripción de la avería</label>
                   <textarea id={`averia-${item.id}`} value={descripcion} onChange={e => setDescripcion(e.target.value)}
-                    required minLength={10} maxLength={2000} className="w-full border rounded-lg p-2" />
+                    required minLength={10} maxLength={2000} disabled={guardando} className="w-full border rounded-lg p-2" />
                   <p className="text-xs text-gray-500">Solo las unidades indicadas pasarán a mantenimiento. Las demás seguirán operativas.</p>
                   <button disabled={guardando} className="bg-rose-700 text-white rounded-lg px-4 py-2 disabled:opacity-50">
                     {guardando ? 'Guardando…' : 'Reportar avería'}
                   </button>
                 </form>
-              ) : <p className="text-sm text-rose-700">{item.unidadesEnUso > 0
-                ? 'Hay unidades en uso. Registra la avería al finalizar la actividad del calendario.'
-                : 'No se puede reportar una avería con el estado actual del equipo.'}</p>}
+              ) : <p className="text-sm text-rose-700">{motivoBloqueo}</p>)}
+              {accion === 'reparacion' && !puedeReparar && <p role="status">Ya no hay unidades habilitadas para reparar. Revisa la disponibilidad actual.</p>}
               <div className="pt-2 flex justify-end">
                 <button
                   type="button"
