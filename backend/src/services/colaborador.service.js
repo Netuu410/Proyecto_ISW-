@@ -28,3 +28,16 @@ export const obtenerColaboradoresService = async () => {
     };
   });
 };
+
+export const crearColaboradorService = async (datos) => {
+  const { nombre, tipo } = datos;
+
+  const colaborador = await prisma.colaborador.create({
+    data: {
+      nombre,
+      tipo
+    }
+  });
+
+  return colaborador;
+};
