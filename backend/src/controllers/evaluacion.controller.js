@@ -1,5 +1,9 @@
 import { z } from 'zod';
-import { crearEvaluacionService } from '../services/evaluacion.service.js';
+import {
+  crearEvaluacionService,
+  obtenerHistorialService,
+  obtenerEventosFinalizadosService
+} from '../services/evaluacion.service.js';
 
 const evaluacionSchema = z.object({
   eventoId: z.number().int().positive('El evento debe ser válido'),
@@ -52,6 +56,48 @@ export const crearEvaluacion = async (req, res) => {
 
     res.status(500).json({
       mensaje: 'Error interno al registrar la evaluación',
+    });
+  }
+};
+
+export const obtenerHistorial = async (req, res) => {
+  try {
+    const colaboradorId = Number(req.params.colaboradorId);
+
+    if (!Number.isInteger(colaboradorId) || colaboradorId <= 0) {
+      return res.status(400).json({
+        mensaje: 'ID del colaborador inválido'
+      });
+    }
+
+    const evaluaciones = await obtenerHistorialService(colaboradorId);
+
+    return res.status(200).json(evaluaciones);
+
+  } catch (error) {
+    if (error.message === 'COLABORADOR_NO_ENCONTRADO') {
+      return res.status(404).json({
+        mensaje: 'El colaborador no existe'
+      });
+    }
+
+    console.error('Error al obtener historial:', error);
+
+    return res.status(500).json({
+      mensaje: 'Error interno al obtener el historial'
+    });
+  }
+};
+export const obtenerEventosFinalizados = async (req, res) => {
+  try {
+    const eventos = await obtenerEventosFinalizadosService();
+
+    return res.status(200).json(eventos);
+  } catch (error) {
+    console.error('Error al obtener eventos:', error);
+
+    return res.status(500).json({
+      mensaje: 'Error interno al obtener eventos finalizados'
     });
   }
 };
