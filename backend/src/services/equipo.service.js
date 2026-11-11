@@ -1,5 +1,6 @@
 import { prisma } from '../database.js';
 import { stockDisponible } from './disponibilidad.service.js';
+import { reservasAfectadas, describirImpacto } from './impacto-averia.service.js';
 
 export class ErrorEquipo extends Error {
   constructor(status, message) {
@@ -8,11 +9,15 @@ export class ErrorEquipo extends Error {
   }
 }
 const conDisponibilidad = equipo => ({ ...equipo, stockDisponible: stockDisponible(equipo) });
+// La tarjeta y el reporte usan la misma ocupación: inicio incluido, término excluido.
+const actividadVigente = ahora => ({
+  estado: { not: 'Cancelado' }, inicio: { lte: ahora }, fin: { gt: ahora },
+});
 export const obtenerEquiposService = async (db = prisma, ahora = new Date()) => {
   const equipos = await db.equipo.findMany({
     orderBy: { id: 'desc' },
     include: { reservasAgenda: {
-      where: { actividad: { estado: { not: 'Cancelado' }, inicio: { lte: ahora }, fin: { gt: ahora } } },
+      where: { actividad: actividadVigente(ahora) },
       select: { cantidad: true },
     } },
   });
@@ -42,18 +47,21 @@ export const reportarAveriaService = (id, data, db = prisma) => db.$transaction(
     throw new ErrorEquipo(409, 'El equipo no está disponible para reportar una avería');
   }
   const ahora = new Date();
-  const enEventoActivo = await tx.reservaEquipo.count({
-    where: { equipoId: id, actividad: {
-      tipo: 'EVENTO', estado: { not: 'Cancelado' },
-      inicio: { lte: ahora }, fin: { gt: ahora },
-    } },
+  const enActividadVigente = await tx.reservaEquipo.count({
+    where: { equipoId: id, actividad: actividadVigente(ahora) },
   });
-  if (enEventoActivo) throw new ErrorEquipo(409, 'El equipo está asignado a un evento activo');
+  if (enActividadVigente) throw new ErrorEquipo(409, 'El equipo tiene unidades asignadas a una actividad vigente del calendario');
   const disponibles = stockDisponible(equipo);
   if (!Number.isInteger(data.cantidad) || data.cantidad < 1 || data.cantidad > disponibles) {
     throw new ErrorEquipo(409, `La cantidad averiada debe estar entre 1 y ${disponibles} unidades`);
   }
   const restantes = disponibles - data.cantidad;
+  const futuras = await tx.reservaEquipo.findMany({
+    where: { equipoId: id, actividad: { estado: { not: 'Cancelado' }, inicio: { gt: ahora } } },
+    select: { cantidad: true, actividad: { select: { id: true, nombre: true, inicio: true, fin: true } } },
+    orderBy: { actividad: { inicio: 'asc' } },
+  });
+  const impacto = describirImpacto(reservasAfectadas(futuras, restantes));
   // Conserva el stock total y acumula solo las unidades dañadas.
   const cambio = await tx.equipo.updateMany({
     where: { id, estado: 'Disponible', stockAveriado: equipo.stockAveriado },
@@ -66,7 +74,7 @@ export const reportarAveriaService = (id, data, db = prisma) => db.$transaction(
   } });
   await tx.alertaStock.create({ data: {
     equipoId: id, reporteId: reporte.id,
-    mensaje: `${equipo.nombre}: ${data.cantidad} unidad(es) reportada(s) con avería. Quedan ${restantes} operativas. Revisar compromisos futuros.`,
+    mensaje: `${equipo.nombre}: ${data.cantidad} unidad(es) reportada(s) con avería. Quedan ${restantes} operativas.\n${impacto}`,
   } });
   return { reporte, equipo: conDisponibilidad(await tx.equipo.findUnique({ where: { id } })) };
 });

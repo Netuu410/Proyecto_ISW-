@@ -215,7 +215,7 @@ export default function InventoryCard({ item, onEquipoActualizado }) {
                   </button>
                 </form>
               ) : <p className="text-sm text-rose-700">{item.unidadesEnUso > 0
-                ? 'Hay unidades en uso. Registra la avería al retornar del evento.'
+                ? 'Hay unidades en uso. Registra la avería al finalizar la actividad del calendario.'
                 : 'No se puede reportar una avería con el estado actual del equipo.'}</p>}
               <div className="pt-2 flex justify-end">
                 <button

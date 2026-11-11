@@ -10,7 +10,7 @@ const descripcion = 'El parlante no enciende';
 const base = { id: 1, nombre: 'Parlante', estado: 'Disponible', stock: 5,
   stockAveriado: 0, precio: 100, costoInterno: 20 };
 
-function simular({ equipo = base, activas = 0, fallaAlerta = false, fallaReparacion = false } = {}) {
+function simular({ equipo = base, activas = 0, actividades, futuras = [], fallaAlerta = false, fallaReparacion = false } = {}) {
   let estado = { equipo: equipo && { ...equipo }, reportes: [], alertas: [], reparaciones: [] };
   return {
     leer: () => estado,
@@ -34,10 +34,22 @@ function simular({ equipo = base, activas = 0, fallaAlerta = false, fallaReparac
           },
           reservaEquipo: { count: async ({ where }) => {
             assert.equal(where.actividad.estado.not, 'Cancelado');
-            assert.equal(where.actividad.tipo, 'EVENTO');
+            assert.equal(where.actividad.tipo, undefined, 'También debe proteger visitas técnicas');
             assert.ok(where.actividad.inicio.lte instanceof Date);
             assert.ok(where.actividad.fin.gt instanceof Date);
-            return activas;
+            if (!actividades) return activas;
+            return actividades.filter(actividad =>
+              actividad.equipoId === where.equipoId &&
+              actividad.estado !== where.actividad.estado.not &&
+              actividad.inicio <= where.actividad.inicio.lte &&
+              actividad.fin > where.actividad.fin.gt
+            ).length;
+          },
+          findMany: async ({ where }) => {
+            assert.equal(where.equipoId, 1);
+            assert.equal(where.actividad.estado.not, 'Cancelado');
+            assert.ok(where.actividad.inicio.gt instanceof Date);
+            return futuras;
           } },
           reparacionEquipo: { create: async ({ data }) => {
             if (fallaReparacion) throw new Error('Fallo al guardar reparación');
@@ -80,6 +92,22 @@ test('avería parcial conserva total y deja cuatro unidades operativas', async (
   assert.match(db.leer().alertas[0].mensaje, /Quedan 4 operativas/);
 });
 
+test('guarda alerta con reserva futura afectada sin cancelar ni modificarla', async () => {
+  const futuras = [{ cantidad: 5, actividad: {
+    id: 20, nombre: 'Evento de prueba', inicio: new Date('2090-01-01T15:00:00Z'),
+    fin: new Date('2090-01-01T16:00:00Z'),
+  } }];
+  const original = structuredClone(futuras);
+  const db = simular({ futuras });
+  await reportarAveriaService(1, { descripcion, cantidad: 2 }, db);
+  const mensaje = db.leer().alertas[0].mensaje;
+  assert.match(mensaje, /#20 Evento de prueba/);
+  assert.match(mensaje, /Faltan hasta 2 unidad/);
+  assert.match(mensaje, /hora de Chile continental/);
+  assert.deepEqual(futuras, original);
+  assert.equal(db.leer().equipo.stockAveriado, 2);
+});
+
 test('reportes sucesivos acumulan daño y solo el último bloquea todo el registro', async () => {
   const db = simular();
   await reportarAveriaService(1, { descripcion, cantidad: 2 }, db);
@@ -98,7 +126,7 @@ test('rechaza exceso sin cambiar stock ni guardar reportes', async () => {
   assert.equal(db.leer().reportes.length, 0);
 });
 
-test('rechaza equipo inexistente, en uso y con evento activo', async () => {
+test('rechaza equipo inexistente, en uso y con actividad vigente', async () => {
   for (const [config, status] of [
     [{ equipo: null }, 404], [{ equipo: { ...base, estado: 'En Uso' } }, 409], [{ activas: 1 }, 409],
   ]) {
@@ -107,6 +135,38 @@ test('rechaza equipo inexistente, en uso y con evento activo', async () => {
     assert.equal(db.leer().reportes.length, 0);
   }
 });
+
+for (const tipo of ['EVENTO', 'VISITA_TECNICA']) {
+  test(`bloquea avería durante ${tipo} sin cambiar stock ni crear registros`, async () => {
+    const ahora = Date.now();
+    const db = simular({ actividades: [{
+      tipo, equipoId: 1, estado: 'Reservado',
+      inicio: new Date(ahora - 3600000), fin: new Date(ahora + 3600000),
+    }] });
+    await assert.rejects(reportarAveriaService(1, { descripcion, cantidad: 1 }, db),
+      error => error.status === 409 && /actividad vigente/.test(error.message));
+    assert.equal(db.leer().equipo.stockAveriado, 0);
+    assert.equal(db.leer().reportes.length, 0);
+    assert.equal(db.leer().alertas.length, 0);
+  });
+
+  test(`permite avería con ${tipo} futuro, terminado, cancelado o de otro equipo`, async () => {
+    const ahora = Date.now();
+    const actividad = { tipo, equipoId: 1, estado: 'Reservado',
+      inicio: new Date(ahora - 3600000), fin: new Date(ahora + 3600000) };
+    for (const cambios of [
+      { inicio: new Date(ahora + 1800000) },
+      { fin: new Date(ahora - 1000) },
+      { estado: 'Cancelado' },
+      { equipoId: 2 },
+    ]) {
+      const db = simular({ actividades: [{ ...actividad, ...cambios }] });
+      const resultado = await reportarAveriaService(1, { descripcion, cantidad: 1 }, db);
+      assert.equal(resultado.equipo.stockAveriado, 1);
+      assert.equal(db.leer().reportes.length, 1);
+    }
+  });
+}
 
 test('propaga fallo de alerta para revertir toda la transacción', async () => {
   const db = simular({ fallaAlerta: true });
